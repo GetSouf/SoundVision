@@ -1,5 +1,4 @@
 #include "PluginEditor.h"
-#include <cstring>
 
 namespace
 {
@@ -18,9 +17,9 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
       processorRef (p)
 {
     setLookAndFeel (&lookAndFeel);
-    setSize (860, 560);
+    setSize (920, 600);
     setResizable (true, true);
-    setResizeLimits (720, 480, 1400, 900);
+    setResizeLimits (780, 520, 1500, 960);
 
     titleLabel.setText ("SoundVision", juce::dontSendNotification);
     titleLabel.setFont (juce::FontOptions (28.0f, juce::Font::bold));
@@ -68,6 +67,7 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     addAndMakeVisible (particleSlider);
     addAndMakeVisible (bandOnlyButton);
     addAndMakeVisible (spatialView);
+    addAndMakeVisible (sourceLegend);
 
     auto& apvts = processorRef.getAPVTS();
     modeAttachment = std::make_unique<BoxAttachment> (apvts, sv::ParamIDs::mode, modeBox);
@@ -82,29 +82,12 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
         if (processorRef.getMode() == sv::PluginMode::receiver)
             return processorRef.getReceiverSnapshots();
 
-        // Sender preview: show this instance as a single local source.
-        sv::SourceSnapshot local;
-        const auto analysis = processorRef.getLocalAnalysis();
-        local.sourceId = 1;
-        local.colourARGB = processorRef.getSourceColour().getARGB();
-        local.pan = analysis.pan;
-        local.depth = analysis.depth;
-        local.energy = analysis.energy;
-        local.bandEnergy = processorRef.isBandOnly() ? analysis.bandEnergy : analysis.energy;
-        local.spectralFocus = analysis.spectralFocus;
-        local.active = true;
-
-        const auto name = processorRef.getSourceDisplayName();
-        const auto* raw = name.toRawUTF8();
-        const size_t bytes = juce::jmin ((size_t) sv::kMaxNameChars - 1, std::strlen (raw));
-        std::memcpy (local.name, raw, bytes);
-        local.name[bytes] = '\0';
-        return { local };
+        return { processorRef.makeLocalSnapshot() };
     });
 
     modeBox.onChange = [this] { syncModeVisibility(); };
     syncModeVisibility();
-    startTimerHz (10);
+    startTimerHz (20);
 }
 
 SoundVisionAudioProcessorEditor::~SoundVisionAudioProcessorEditor()
@@ -123,24 +106,23 @@ void SoundVisionAudioProcessorEditor::syncModeVisibility()
 void SoundVisionAudioProcessorEditor::refreshTitle()
 {
     if (processorRef.getMode() == sv::PluginMode::receiver)
-        subtitleLabel.setText ("Receiver - master overview", juce::dontSendNotification);
+        subtitleLabel.setText ("Receiver - decode the stereo field around the head", juce::dontSendNotification);
     else
-        subtitleLabel.setText ("Sender - publish this track into the spatial scene", juce::dontSendNotification);
+        subtitleLabel.setText ("Sender - publish this track's L/R/Mid imaging", juce::dontSendNotification);
 }
 
 void SoundVisionAudioProcessorEditor::timerCallback()
 {
     spatialView.setEmissionScale (processorRef.getParticleRate());
     spatialView.setBandLabel (processorRef.getCentreHz(), processorRef.getBandwidthHz());
+    sourceLegend.setSources (spatialView.getLatestSnapshots());
 
-    const int sources = processorRef.getHub()->getOccupiedCount();
     const auto analysis = processorRef.getLocalAnalysis();
-
     statusLabel.setText (
-        "Sources on hub: " + juce::String (sources)
-            + "   |   Pan " + juce::String (analysis.pan, 2)
-            + "   Energy " + juce::String (analysis.energy, 2)
-            + "   Band " + juce::String (analysis.bandEnergy, 2),
+        "L " + juce::String (analysis.leftEnergy, 2)
+            + "  M " + juce::String (analysis.midEnergy, 2)
+            + "  R " + juce::String (analysis.rightEnergy, 2)
+            + "  S " + juce::String (analysis.sideEnergy, 2),
         juce::dontSendNotification);
 
     syncModeVisibility();
@@ -166,6 +148,8 @@ void SoundVisionAudioProcessorEditor::resized()
 
     area.removeFromTop (8);
     auto controls = area.removeFromLeft (280);
+    auto legend = area.removeFromBottom (130);
+    sourceLegend.setBounds (legend.reduced (8, 4));
     spatialView.setBounds (area.reduced (8, 0));
 
     auto row = [&controls] (int h) -> juce::Rectangle<int>

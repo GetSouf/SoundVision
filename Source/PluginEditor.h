@@ -2,6 +2,7 @@
 
 #include "PluginProcessor.h"
 #include "ui/SoundVisionLookAndFeel.h"
+#include "ui/SourceLegend.h"
 #include "ui/SpatialView.h"
 #include <JuceHeader.h>
 
@@ -44,6 +45,7 @@ private:
     juce::Label statusLabel;
 
     sv::SpatialView spatialView;
+    sv::SourceLegend sourceLegend;
 
     using BoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;

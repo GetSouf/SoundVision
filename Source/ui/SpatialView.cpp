@@ -1,5 +1,4 @@
 #include "ui/SpatialView.h"
-#include <cmath>
 
 namespace sv
 {
@@ -38,21 +37,30 @@ void SpatialView::timerCallback()
     lastTickSeconds = now;
 
     std::vector<VisualSource> visuals;
+    latestSnapshots.clear();
 
     if (provider)
     {
-        const auto snaps = provider();
-        visuals.reserve (snaps.size());
+        latestSnapshots = provider();
+        visuals.reserve (latestSnapshots.size());
 
-        for (const auto& snap : snaps)
+        for (const auto& snap : latestSnapshots)
         {
             VisualSource vs;
             vs.sourceId = snap.sourceId;
             vs.name = juce::String::fromUTF8 (snap.name);
             vs.colour = juce::Colour (snap.colourARGB);
-            vs.position = snapshotToScenePoint (snap);
-            vs.energy = snap.energy;
-            vs.bandEnergy = juce::jmax (snap.bandEnergy, snap.spectralFocus * 0.85f);
+            vs.leftEnergy = snap.leftEnergy;
+            vs.rightEnergy = snap.rightEnergy;
+            vs.midEnergy = snap.midEnergy;
+            vs.sideEnergy = snap.sideEnergy;
+            vs.bandEnergy = juce::jmax (snap.bandEnergy, snap.spectralFocus * 0.75f);
+
+            // Prefer band imaging; spectral focus gently boosts overall presence.
+            const float boost = 0.85f + 0.15f * snap.spectralFocus;
+            vs.leftEnergy *= boost;
+            vs.rightEnergy *= boost;
+            vs.midEnergy *= boost;
             visuals.push_back (vs);
         }
     }
@@ -93,14 +101,8 @@ void SpatialView::drawHead (juce::Graphics& g, juce::Point<float> centre) const
     g.setColour (juce::Colour (0xff9aa7b5));
     g.drawEllipse (centre.x - 12.0f, centre.y - 14.0f, 24.0f, 28.0f, 1.5f);
 
-    // Ears
     g.fillEllipse (centre.x - 18.0f, centre.y - 4.0f, 7.0f, 10.0f);
     g.fillEllipse (centre.x + 11.0f, centre.y - 4.0f, 7.0f, 10.0f);
-
-    g.setColour (juce::Colours::white.withAlpha (0.55f));
-    g.setFont (juce::FontOptions (10.0f));
-    g.drawText ("HEAD", juce::Rectangle<float> (centre.x - 22.0f, centre.y + 16.0f, 44.0f, 14.0f),
-                juce::Justification::centred);
 }
 
 void SpatialView::paint (juce::Graphics& g)
@@ -109,8 +111,8 @@ void SpatialView::paint (juce::Graphics& g)
     const auto centre = bounds.getCentre();
 
     drawGrid (g, bounds, centre);
-    drawHead (g, centre);
     particles.paint (g, bounds, centre);
+    drawHead (g, centre);
 
     g.setColour (juce::Colours::white.withAlpha (0.7f));
     g.setFont (juce::FontOptions (13.0f));

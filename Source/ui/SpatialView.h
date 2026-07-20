@@ -3,6 +3,7 @@
 #include "dsp/ParticleSystem.h"
 #include <JuceHeader.h>
 #include <functional>
+#include <vector>
 
 namespace sv
 {
@@ -18,6 +19,7 @@ public:
     void setSnapshotProvider (SnapshotProvider provider);
     void setEmissionScale (float scale) noexcept { emissionScale = scale; }
     void setBandLabel (float centreHz, float bandwidthHz);
+    std::vector<SourceSnapshot> getLatestSnapshots() const { return latestSnapshots; }
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -29,6 +31,7 @@ private:
 
     SnapshotProvider provider;
     ParticleSystem particles;
+    std::vector<SourceSnapshot> latestSnapshots;
     float emissionScale = 1.0f;
     float centreHz = 500.0f;
     float bandwidthHz = 200.0f;

@@ -115,6 +115,34 @@ std::vector<sv::SourceSnapshot> SoundVisionAudioProcessor::getReceiverSnapshots(
     return hub->collectActiveSources();
 }
 
+sv::SourceSnapshot SoundVisionAudioProcessor::makeLocalSnapshot() const
+{
+    const auto analysis = getLocalAnalysis();
+
+    sv::SourceSnapshot snap;
+    snap.sourceId = instanceId;
+    snap.colourARGB = getSourceColour().getARGB();
+    snap.leftEnergy = analysis.leftEnergy;
+    snap.rightEnergy = analysis.rightEnergy;
+    snap.midEnergy = analysis.midEnergy;
+    snap.sideEnergy = analysis.sideEnergy;
+    snap.energy = analysis.energy;
+    snap.bandEnergy = isBandOnly() ? analysis.bandEnergy : analysis.energy;
+    snap.spectralFocus = analysis.spectralFocus;
+    snap.samplePosition = sampleCounter.load (std::memory_order_relaxed);
+    snap.active = true;
+
+    {
+        const juce::SpinLock::ScopedLockType lock (nameLock);
+        const auto* raw = sourceName.toRawUTF8();
+        const size_t bytes = juce::jmin ((size_t) sv::kMaxNameChars - 1, std::strlen (raw));
+        std::memcpy (snap.name, raw, bytes);
+        snap.name[bytes] = '\0';
+    }
+
+    return snap;
+}
+
 void SoundVisionAudioProcessor::ensureSenderRegistration()
 {
     if (hubSlot.load (std::memory_order_acquire) >= 0)
@@ -133,30 +161,12 @@ void SoundVisionAudioProcessor::unregisterSender()
 
 void SoundVisionAudioProcessor::publishSenderSnapshot (const sv::AnalysisResult& result)
 {
+    juce::ignoreUnused (result);
     const int slot = hubSlot.load (std::memory_order_acquire);
     if (slot < 0)
         return;
 
-    sv::SourceSnapshot snap;
-    snap.sourceId = instanceId;
-    snap.colourARGB = getSourceColour().getARGB();
-    snap.pan = result.pan;
-    snap.depth = result.depth;
-    snap.energy = result.energy;
-    snap.bandEnergy = isBandOnly() ? result.bandEnergy : result.energy;
-    snap.spectralFocus = result.spectralFocus;
-    snap.samplePosition = sampleCounter.load (std::memory_order_relaxed);
-    snap.active = true;
-
-    {
-        const juce::SpinLock::ScopedLockType lock (nameLock);
-        const auto* raw = sourceName.toRawUTF8();
-        const size_t bytes = juce::jmin ((size_t) sv::kMaxNameChars - 1, std::strlen (raw));
-        std::memcpy (snap.name, raw, bytes);
-        snap.name[bytes] = '\0';
-    }
-
-    hub->publish (slot, snap);
+    hub->publish (slot, makeLocalSnapshot());
 }
 
 void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
@@ -174,12 +184,13 @@ void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     else
         unregisterSender();
 
-    // Always analyse local audio (useful for sender publish + local meters).
     analysisBuffer.makeCopyOf (buffer, true);
 
     bandFilter.setBand (getCentreHz(), getBandwidthHz());
-    bandFilter.setEnabled (true);
-    bandFilter.process (analysisBuffer);
+    bandFilter.setEnabled (isBandOnly());
+
+    if (isBandOnly())
+        bandFilter.process (analysisBuffer);
 
     const auto result = analyzer.analyse (buffer, analysisBuffer, getCentreHz(), getBandwidthHz());
     lastAnalysis.store (result);
@@ -187,8 +198,6 @@ void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 
     if (mode == sv::PluginMode::sender)
         publishSenderSnapshot (result);
-
-    // Analyser is insert-safe: audio passes through unchanged.
 }
 
 void SoundVisionAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

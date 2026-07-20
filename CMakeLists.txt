@@ -43,6 +43,7 @@ target_sources(SoundVision
         Source/dsp/ParticleSystem.cpp
         Source/ipc/SoundVisionHub.cpp
         Source/ui/SpatialView.cpp
+        Source/ui/SourceLegend.cpp
         Source/ui/SoundVisionLookAndFeel.cpp
         Source/params/PluginParameters.cpp)
 

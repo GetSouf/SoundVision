@@ -6,21 +6,6 @@ namespace sv
 
 namespace
 {
-float channelRms (const juce::AudioBuffer<float>& buffer, int channel) noexcept
-{
-    if (! juce::isPositiveAndBelow (channel, buffer.getNumChannels()))
-        return 0.0f;
-
-    const auto* data = buffer.getReadPointer (channel);
-    const int n = buffer.getNumSamples();
-    double sum = 0.0;
-
-    for (int i = 0; i < n; ++i)
-        sum += (double) data[i] * (double) data[i];
-
-    return n > 0 ? (float) std::sqrt (sum / (double) n) : 0.0f;
-}
-
 float smoothTowards (float current, float target, float coeff) noexcept
 {
     return current + coeff * (target - current);
@@ -39,12 +24,59 @@ void StereoAnalyzer::reset()
     fftData.fill (0.0f);
     fifoIndex = 0;
     nextBlockReady = false;
-    smoothedPan = smoothedDepth = smoothedEnergy = smoothedBandEnergy = smoothedSpectral = 0.0f;
+    smoothed = {};
 }
 
 float StereoAnalyzer::softClip01 (float x) noexcept
 {
-    return juce::jlimit (0.0f, 1.0f, 1.0f - std::exp (-3.5f * juce::jmax (0.0f, x)));
+    return juce::jlimit (0.0f, 1.0f, 1.0f - std::exp (-3.2f * juce::jmax (0.0f, x)));
+}
+
+float StereoAnalyzer::smoothMeter (float current, float target) noexcept
+{
+    // Fast attack, slow release — stops the scene from shimmering.
+    const float coeff = target > current ? 0.22f : 0.045f;
+    return smoothTowards (current, target, coeff);
+}
+
+void StereoAnalyzer::accumulateField (const juce::AudioBuffer<float>& buffer,
+                                      float& leftRms,
+                                      float& rightRms,
+                                      float& midRms,
+                                      float& sideRms) noexcept
+{
+    const int numSamples = buffer.getNumSamples();
+    const int numChannels = buffer.getNumChannels();
+
+    if (numSamples <= 0 || numChannels <= 0)
+    {
+        leftRms = rightRms = midRms = sideRms = 0.0f;
+        return;
+    }
+
+    const float* left = buffer.getReadPointer (0);
+    const float* right = numChannels > 1 ? buffer.getReadPointer (1) : left;
+
+    double sumL = 0.0, sumR = 0.0, sumM = 0.0, sumS = 0.0;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const double l = (double) left[i];
+        const double r = (double) right[i];
+        const double m = 0.5 * (l + r);
+        const double s = 0.5 * (l - r);
+
+        sumL += l * l;
+        sumR += r * r;
+        sumM += m * m;
+        sumS += s * s;
+    }
+
+    const double inv = 1.0 / (double) numSamples;
+    leftRms = (float) std::sqrt (sumL * inv);
+    rightRms = (float) std::sqrt (sumR * inv);
+    midRms = (float) std::sqrt (sumM * inv);
+    sideRms = (float) std::sqrt (sumS * inv);
 }
 
 void StereoAnalyzer::pushSamplesForFft (const juce::AudioBuffer<float>& buffer) noexcept
@@ -73,7 +105,7 @@ void StereoAnalyzer::pushSamplesForFft (const juce::AudioBuffer<float>& buffer) 
 float StereoAnalyzer::computeSpectralFocus (float centreHz, float bandwidthHz) noexcept
 {
     if (! nextBlockReady)
-        return smoothedSpectral;
+        return smoothed.spectralFocus;
 
     nextBlockReady = false;
 
@@ -108,31 +140,29 @@ AnalysisResult StereoAnalyzer::analyse (const juce::AudioBuffer<float>& dryBuffe
                                         float centreHz,
                                         float bandwidthHz) noexcept
 {
-    const float left = channelRms (dryBuffer, 0);
-    const float right = dryBuffer.getNumChannels() > 1 ? channelRms (dryBuffer, 1) : left;
-    const float mid = 0.5f * (left + right);
-    const float side = 0.5f * std::abs (left - right);
-    const float denom = juce::jmax (1.0e-6f, left + right);
+    float dryL = 0, dryR = 0, dryM = 0, dryS = 0;
+    float bandL = 0, bandR = 0, bandM = 0, bandS = 0;
 
-    const float panTarget = (right - left) / denom;
-    const float depthTarget = juce::jlimit (-1.0f, 1.0f, (mid - side) / juce::jmax (1.0e-6f, mid + side));
-    const float energyTarget = softClip01 (std::sqrt (left * left + right * right));
+    accumulateField (dryBuffer, dryL, dryR, dryM, dryS);
+    accumulateField (bandBuffer, bandL, bandR, bandM, bandS);
 
-    const float bandL = channelRms (bandBuffer, 0);
-    const float bandR = bandBuffer.getNumChannels() > 1 ? channelRms (bandBuffer, 1) : bandL;
+    const float energyTarget = softClip01 (std::sqrt (dryL * dryL + dryR * dryR));
     const float bandEnergyTarget = softClip01 (std::sqrt (bandL * bandL + bandR * bandR));
 
-    pushSamplesForFft (dryBuffer);
+    pushSamplesForFft (bandBuffer);
     const float spectralTarget = computeSpectralFocus (centreHz, bandwidthHz);
 
-    constexpr float coeff = 0.18f;
-    smoothedPan = smoothTowards (smoothedPan, panTarget, coeff);
-    smoothedDepth = smoothTowards (smoothedDepth, depthTarget, coeff);
-    smoothedEnergy = smoothTowards (smoothedEnergy, energyTarget, coeff);
-    smoothedBandEnergy = smoothTowards (smoothedBandEnergy, bandEnergyTarget, coeff);
-    smoothedSpectral = smoothTowards (smoothedSpectral, spectralTarget, coeff);
+    AnalysisResult out;
+    out.leftEnergy = smoothMeter (smoothed.leftEnergy, softClip01 (bandL * 1.35f));
+    out.rightEnergy = smoothMeter (smoothed.rightEnergy, softClip01 (bandR * 1.35f));
+    out.midEnergy = smoothMeter (smoothed.midEnergy, softClip01 (bandM * 1.35f));
+    out.sideEnergy = smoothMeter (smoothed.sideEnergy, softClip01 (bandS * 1.35f));
+    out.energy = smoothMeter (smoothed.energy, energyTarget);
+    out.bandEnergy = smoothMeter (smoothed.bandEnergy, bandEnergyTarget);
+    out.spectralFocus = smoothMeter (smoothed.spectralFocus, spectralTarget);
 
-    return { smoothedPan, smoothedDepth, smoothedEnergy, smoothedBandEnergy, smoothedSpectral };
+    smoothed = out;
+    return out;
 }
 
 } // namespace sv

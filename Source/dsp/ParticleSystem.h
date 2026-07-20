@@ -2,7 +2,6 @@
 
 #include "../ipc/SourceSnapshot.h"
 #include <JuceHeader.h>
-#include <cmath>
 #include <vector>
 
 namespace sv
@@ -24,13 +23,16 @@ struct VisualSource
     uint32_t sourceId = 0;
     juce::String name;
     juce::Colour colour;
-    juce::Point<float> position; // normalised scene coords, centre = head
-    float energy = 0.0f;
+    float leftEnergy = 0.0f;
+    float rightEnergy = 0.0f;
+    float midEnergy = 0.0f;
+    float sideEnergy = 0.0f;
     float bandEnergy = 0.0f;
 };
 
 /**
- * Lightweight CPU particle field driven by source energy in the selected band.
+ * Particle field decoded from L / R / Mid energies.
+ * One source can illuminate both ears (wide/side content) without a second label.
  */
 class ParticleSystem
 {
@@ -39,7 +41,6 @@ public:
     void clear();
 
     void update (float deltaSeconds, const std::vector<VisualSource>& sources, float emissionScale);
-
     void paint (juce::Graphics& g, juce::Rectangle<float> bounds, juce::Point<float> headCentre) const;
 
     const std::vector<VisualSource>& getSources() const noexcept { return lastSources; }
@@ -47,24 +48,15 @@ public:
 private:
     std::vector<Particle> particles;
     std::vector<VisualSource> lastSources;
-    int maxParticles = 1200;
+    int maxParticles = 1600;
     juce::Random random;
 
-    void emitFromSource (const VisualSource& source, float amount);
+    void emitLobe (juce::Point<float> origin,
+                   float energy,
+                   juce::Colour colour,
+                   uint32_t sourceId,
+                   float amount,
+                   float outwardBiasX);
 };
-
-/** Maps pan/depth into a 2D point around the virtual head. */
-inline juce::Point<float> snapshotToScenePoint (const SourceSnapshot& snap) noexcept
-{
-    // Place louder sources slightly closer to the head.
-    const float radius = juce::jmap (1.0f - snap.energy, 0.35f, 0.92f);
-    const float angle = snap.pan * (juce::MathConstants<float>::halfPi); // -90 .. +90 deg
-    const float depthBias = snap.depth * 0.18f;
-
-    return {
-        std::sin (angle) * radius,
-        -std::cos (angle) * radius * 0.72f - depthBias
-    };
-}
 
 } // namespace sv

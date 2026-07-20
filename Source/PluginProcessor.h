@@ -51,6 +51,7 @@ public:
     float getParticleRate() const;
     bool isBandOnly() const;
     juce::Colour getSourceColour() const;
+    sv::SourceSnapshot makeLocalSnapshot() const;
 
 private:
     juce::AudioProcessorValueTreeState apvts;
@@ -67,16 +68,20 @@ private:
 
     struct AtomicAnalysis
     {
-        std::atomic<float> pan { 0.0f };
-        std::atomic<float> depth { 0.0f };
+        std::atomic<float> leftEnergy { 0.0f };
+        std::atomic<float> rightEnergy { 0.0f };
+        std::atomic<float> midEnergy { 0.0f };
+        std::atomic<float> sideEnergy { 0.0f };
         std::atomic<float> energy { 0.0f };
         std::atomic<float> bandEnergy { 0.0f };
         std::atomic<float> spectralFocus { 0.0f };
 
         void store (const sv::AnalysisResult& r) noexcept
         {
-            pan.store (r.pan, std::memory_order_relaxed);
-            depth.store (r.depth, std::memory_order_relaxed);
+            leftEnergy.store (r.leftEnergy, std::memory_order_relaxed);
+            rightEnergy.store (r.rightEnergy, std::memory_order_relaxed);
+            midEnergy.store (r.midEnergy, std::memory_order_relaxed);
+            sideEnergy.store (r.sideEnergy, std::memory_order_relaxed);
             energy.store (r.energy, std::memory_order_relaxed);
             bandEnergy.store (r.bandEnergy, std::memory_order_relaxed);
             spectralFocus.store (r.spectralFocus, std::memory_order_relaxed);
@@ -85,8 +90,10 @@ private:
         sv::AnalysisResult load() const noexcept
         {
             return {
-                pan.load (std::memory_order_relaxed),
-                depth.load (std::memory_order_relaxed),
+                leftEnergy.load (std::memory_order_relaxed),
+                rightEnergy.load (std::memory_order_relaxed),
+                midEnergy.load (std::memory_order_relaxed),
+                sideEnergy.load (std::memory_order_relaxed),
                 energy.load (std::memory_order_relaxed),
                 bandEnergy.load (std::memory_order_relaxed),
                 spectralFocus.load (std::memory_order_relaxed)

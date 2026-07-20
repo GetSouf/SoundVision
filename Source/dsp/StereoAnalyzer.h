@@ -8,16 +8,18 @@ namespace sv
 
 struct AnalysisResult
 {
-    float pan = 0.0f;
-    float depth = 0.0f;
+    float leftEnergy = 0.0f;
+    float rightEnergy = 0.0f;
+    float midEnergy = 0.0f;
+    float sideEnergy = 0.0f;
     float energy = 0.0f;
     float bandEnergy = 0.0f;
     float spectralFocus = 0.0f;
 };
 
 /**
- * Extracts stereo position + energy metrics from a buffer.
- * Optionally runs a small FFT for spectral focus around a centre frequency.
+ * Stable stereo-field metrics: per-channel RMS plus true Mid/Side RMS,
+ * with fast-attack / slow-release smoothing to kill frame jitter.
  */
 class StereoAnalyzer
 {
@@ -31,7 +33,7 @@ public:
                             float bandwidthHz) noexcept;
 
 private:
-    static constexpr int fftOrder = 11; // 2048
+    static constexpr int fftOrder = 11;
     static constexpr int fftSize = 1 << fftOrder;
 
     juce::dsp::FFT fft { fftOrder };
@@ -45,16 +47,18 @@ private:
     bool nextBlockReady = false;
     double sampleRate = 44100.0;
 
-    float smoothedPan = 0.0f;
-    float smoothedDepth = 0.0f;
-    float smoothedEnergy = 0.0f;
-    float smoothedBandEnergy = 0.0f;
-    float smoothedSpectral = 0.0f;
+    AnalysisResult smoothed {};
 
     float computeSpectralFocus (float centreHz, float bandwidthHz) noexcept;
     void pushSamplesForFft (const juce::AudioBuffer<float>& buffer) noexcept;
 
     static float softClip01 (float x) noexcept;
+    static float smoothMeter (float current, float target) noexcept;
+    static void accumulateField (const juce::AudioBuffer<float>& buffer,
+                                 float& leftRms,
+                                 float& rightRms,
+                                 float& midRms,
+                                 float& sideRms) noexcept;
 };
 
 } // namespace sv
