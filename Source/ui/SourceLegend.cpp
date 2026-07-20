@@ -24,7 +24,7 @@ void SourceLegend::paint (juce::Graphics& g)
 
     g.setFont (juce::FontOptions (10.0f));
     g.setColour (juce::Colour (0xff9aa7b5));
-    g.drawText ("Dense fog ~ compressed   |   Streaky ~ open/punchy",
+    g.drawText ("Continuous stereo field  |  diffuse ~ reverb/width",
                 area.removeFromTop (14.0f), juce::Justification::centredLeft);
     area.removeFromTop (6.0f);
 
@@ -52,7 +52,7 @@ void SourceLegend::paint (juce::Graphics& g)
 
         g.setColour (juce::Colour (0xff9aa7b5));
         g.setFont (juce::FontOptions (10.0f));
-        g.drawText ("crest " + juce::String (snap.crest, 2)
+        g.drawText ("diff " + juce::String (snap.diffuseness, 2)
                         + "  dens " + juce::String (snap.density, 2)
                         + "  punch " + juce::String (snap.punch, 2),
                     row.withTrimmedLeft (22.0f).removeFromBottom (14.0f),
@@ -61,8 +61,8 @@ void SourceLegend::paint (juce::Graphics& g)
 
         auto meters = row.withTrimmedLeft (210.0f);
         const float meterW = meters.getWidth() / 3.0f;
-        const float values[3] { snap.leftEnergy, snap.midEnergy, snap.rightEnergy };
-        const char* labels[3] { "L", "M", "R" };
+        const float values[3] { snap.leftEnergy, snap.centreEnergy, snap.rightEnergy };
+        const char* labels[3] { "L", "C", "R" };
 
         for (int i = 0; i < 3; ++i)
         {

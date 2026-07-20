@@ -2,6 +2,7 @@
 
 #include "../ipc/SourceSnapshot.h"
 #include <JuceHeader.h>
+#include <array>
 #include <vector>
 
 namespace sv
@@ -25,20 +26,18 @@ struct VisualSource
     uint32_t sourceId = 0;
     juce::String name;
     juce::Colour colour;
-    float leftEnergy = 0.0f;
-    float rightEnergy = 0.0f;
-    float midEnergy = 0.0f;
-    float sideEnergy = 0.0f;
+    std::array<float, kAngularBins> field {};
     float bandEnergy = 0.0f;
+    float diffuseness = 0.0f;
     float crest = 0.5f;
     float punch = 0.0f;
     float density = 0.5f;
+    float leftEnergy = 0.0f;
+    float centreEnergy = 0.0f;
+    float rightEnergy = 0.0f;
 };
 
-/**
- * Particle clouds around a centred listener.
- * L/R/Mid weights place clouds; crest/punch/density reshape texture (compression etc.).
- */
+/** Particles sample the continuous angular field — the headphone soundstage. */
 class ParticleSystem
 {
 public:
@@ -53,11 +52,11 @@ public:
 private:
     std::vector<Particle> particles;
     std::vector<VisualSource> lastSources;
-    int maxParticles = 2800;
+    int maxParticles = 3200;
     juce::Random random;
 
-    void emitCloud (const VisualSource& source, float deltaSeconds, float emissionScale);
-    float sampleAngle (const VisualSource& source);
+    void emitFromField (const VisualSource& source, float deltaSeconds, float emissionScale);
+    int sampleBin (const VisualSource& source);
 };
 
 } // namespace sv

@@ -115,6 +115,12 @@ std::vector<sv::SourceSnapshot> SoundVisionAudioProcessor::getReceiverSnapshots(
     return hub->collectActiveSources();
 }
 
+sv::AnalysisResult SoundVisionAudioProcessor::getLocalAnalysis() const
+{
+    const juce::SpinLock::ScopedLockType lock (analysisLock);
+    return lastAnalysis;
+}
+
 sv::SourceSnapshot SoundVisionAudioProcessor::makeLocalSnapshot() const
 {
     const auto analysis = getLocalAnalysis();
@@ -122,13 +128,14 @@ sv::SourceSnapshot SoundVisionAudioProcessor::makeLocalSnapshot() const
     sv::SourceSnapshot snap;
     snap.sourceId = instanceId;
     snap.colourARGB = getSourceColour().getARGB();
+    snap.field = analysis.field;
     snap.leftEnergy = analysis.leftEnergy;
+    snap.centreEnergy = analysis.centreEnergy;
     snap.rightEnergy = analysis.rightEnergy;
-    snap.midEnergy = analysis.midEnergy;
-    snap.sideEnergy = analysis.sideEnergy;
     snap.energy = analysis.energy;
     snap.bandEnergy = isBandOnly() ? analysis.bandEnergy : analysis.energy;
     snap.spectralFocus = analysis.spectralFocus;
+    snap.diffuseness = analysis.diffuseness;
     snap.crest = analysis.crest;
     snap.punch = analysis.punch;
     snap.density = analysis.density;
@@ -199,7 +206,12 @@ void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
         bandFilter.process (analysisBuffer);
 
     const auto result = analyzer.analyse (buffer, analysisBuffer, lowHz, highHz);
-    lastAnalysis.store (result);
+
+    {
+        const juce::SpinLock::ScopedLockType lock (analysisLock);
+        lastAnalysis = result;
+    }
+
     sampleCounter.fetch_add ((uint64_t) buffer.getNumSamples(), std::memory_order_relaxed);
 
     if (mode == sv::PluginMode::sender)

@@ -26,6 +26,7 @@ private:
 
     juce::Label titleLabel;
     juce::Label subtitleLabel;
+    juce::Label versionLabel;
 
     juce::ComboBox modeBox;
     juce::ComboBox colourBox;

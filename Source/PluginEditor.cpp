@@ -26,6 +26,12 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     titleLabel.setColour (juce::Label::textColourId, juce::Colour (0xff4ecdc4));
     addAndMakeVisible (titleLabel);
 
+    versionLabel.setText ("v" + juce::String (JucePlugin_VersionString), juce::dontSendNotification);
+    versionLabel.setFont (juce::FontOptions (13.0f));
+    versionLabel.setColour (juce::Label::textColourId, juce::Colour (0xff9aa7b5));
+    versionLabel.setJustificationType (juce::Justification::centredRight);
+    addAndMakeVisible (versionLabel);
+
     subtitleLabel.setText ("Spatial bus visualiser", juce::dontSendNotification);
     subtitleLabel.setFont (juce::FontOptions (14.0f));
     subtitleLabel.setColour (juce::Label::textColourId, juce::Colour (0xff9aa7b5));
@@ -119,10 +125,10 @@ void SoundVisionAudioProcessorEditor::timerCallback()
 
     const auto analysis = processorRef.getLocalAnalysis();
     statusLabel.setText (
-        "L/M/R " + juce::String (analysis.leftEnergy, 2) + "/"
-            + juce::String (analysis.midEnergy, 2) + "/"
+        "field L/C/R " + juce::String (analysis.leftEnergy, 2) + "/"
+            + juce::String (analysis.centreEnergy, 2) + "/"
             + juce::String (analysis.rightEnergy, 2)
-            + "   crest " + juce::String (analysis.crest, 2)
+            + "   diff " + juce::String (analysis.diffuseness, 2)
             + " dens " + juce::String (analysis.density, 2),
         juce::dontSendNotification);
 
@@ -144,6 +150,7 @@ void SoundVisionAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (16);
     auto header = area.removeFromTop (62);
+    versionLabel.setBounds (header.removeFromRight (72).removeFromTop (28));
     titleLabel.setBounds (header.removeFromLeft (220).removeFromTop (34));
     subtitleLabel.setBounds (header.removeFromTop (28));
 

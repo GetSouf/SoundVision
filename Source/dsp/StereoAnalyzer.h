@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ipc/SourceSnapshot.h"
 #include <JuceHeader.h>
 #include <array>
 
@@ -8,21 +9,22 @@ namespace sv
 
 struct AnalysisResult
 {
+    std::array<float, kAngularBins> field {};
     float leftEnergy = 0.0f;
+    float centreEnergy = 0.0f;
     float rightEnergy = 0.0f;
-    float midEnergy = 0.0f;
-    float sideEnergy = 0.0f;
     float energy = 0.0f;
     float bandEnergy = 0.0f;
     float spectralFocus = 0.0f;
+    float diffuseness = 0.0f;
     float crest = 0.5f;
     float punch = 0.0f;
     float density = 0.5f;
 };
 
 /**
- * Stereo-field + dynamics metrics.
- * Crest/punch/density make compression and transient shaping readable as cloud texture.
+ * Builds a continuous angular energy map of the stereo image.
+ * Pan moves the mass across the stage; low L/R correlation (reverb) widens it.
  */
 class StereoAnalyzer
 {
@@ -57,15 +59,14 @@ private:
 
     float computeSpectralFocus (float lowHz, float highHz) noexcept;
     void pushSamplesForFft (const juce::AudioBuffer<float>& buffer) noexcept;
+    void buildAngularField (const juce::AudioBuffer<float>& buffer,
+                            std::array<float, kAngularBins>& outField,
+                            float& diffusenessOut,
+                            float& rmsOut,
+                            float& peakOut) noexcept;
 
     static float softClip01 (float x) noexcept;
     static float smoothMeter (float current, float target) noexcept;
-    static void accumulateField (const juce::AudioBuffer<float>& buffer,
-                                 float& leftRms,
-                                 float& rightRms,
-                                 float& midRms,
-                                 float& sideRms,
-                                 float& peakAbs) noexcept;
 };
 
 } // namespace sv

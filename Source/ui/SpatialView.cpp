@@ -50,14 +50,15 @@ void SpatialView::timerCallback()
             vs.sourceId = snap.sourceId;
             vs.name = juce::String::fromUTF8 (snap.name);
             vs.colour = juce::Colour (snap.colourARGB);
-            vs.leftEnergy = snap.leftEnergy;
-            vs.rightEnergy = snap.rightEnergy;
-            vs.midEnergy = snap.midEnergy;
-            vs.sideEnergy = snap.sideEnergy;
+            vs.field = snap.field;
             vs.bandEnergy = juce::jmax (snap.bandEnergy, snap.spectralFocus * 0.7f);
+            vs.diffuseness = snap.diffuseness;
             vs.crest = snap.crest;
             vs.punch = snap.punch;
             vs.density = snap.density;
+            vs.leftEnergy = snap.leftEnergy;
+            vs.centreEnergy = snap.centreEnergy;
+            vs.rightEnergy = snap.rightEnergy;
             visuals.push_back (vs);
         }
     }

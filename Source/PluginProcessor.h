@@ -44,7 +44,7 @@ public:
     void setSourceDisplayName (const juce::String& name);
 
     std::vector<sv::SourceSnapshot> getReceiverSnapshots() const;
-    sv::AnalysisResult getLocalAnalysis() const noexcept { return lastAnalysis.load(); }
+    sv::AnalysisResult getLocalAnalysis() const;
     sv::SourceSnapshot makeLocalSnapshot() const;
 
     float getFreqLowHz() const;
@@ -66,51 +66,8 @@ private:
     juce::String sourceName { "Source" };
     mutable juce::SpinLock nameLock;
 
-    struct AtomicAnalysis
-    {
-        std::atomic<float> leftEnergy { 0.0f };
-        std::atomic<float> rightEnergy { 0.0f };
-        std::atomic<float> midEnergy { 0.0f };
-        std::atomic<float> sideEnergy { 0.0f };
-        std::atomic<float> energy { 0.0f };
-        std::atomic<float> bandEnergy { 0.0f };
-        std::atomic<float> spectralFocus { 0.0f };
-        std::atomic<float> crest { 0.5f };
-        std::atomic<float> punch { 0.0f };
-        std::atomic<float> density { 0.5f };
-
-        void store (const sv::AnalysisResult& r) noexcept
-        {
-            leftEnergy.store (r.leftEnergy, std::memory_order_relaxed);
-            rightEnergy.store (r.rightEnergy, std::memory_order_relaxed);
-            midEnergy.store (r.midEnergy, std::memory_order_relaxed);
-            sideEnergy.store (r.sideEnergy, std::memory_order_relaxed);
-            energy.store (r.energy, std::memory_order_relaxed);
-            bandEnergy.store (r.bandEnergy, std::memory_order_relaxed);
-            spectralFocus.store (r.spectralFocus, std::memory_order_relaxed);
-            crest.store (r.crest, std::memory_order_relaxed);
-            punch.store (r.punch, std::memory_order_relaxed);
-            density.store (r.density, std::memory_order_relaxed);
-        }
-
-        sv::AnalysisResult load() const noexcept
-        {
-            return {
-                leftEnergy.load (std::memory_order_relaxed),
-                rightEnergy.load (std::memory_order_relaxed),
-                midEnergy.load (std::memory_order_relaxed),
-                sideEnergy.load (std::memory_order_relaxed),
-                energy.load (std::memory_order_relaxed),
-                bandEnergy.load (std::memory_order_relaxed),
-                spectralFocus.load (std::memory_order_relaxed),
-                crest.load (std::memory_order_relaxed),
-                punch.load (std::memory_order_relaxed),
-                density.load (std::memory_order_relaxed)
-            };
-        }
-    };
-
-    AtomicAnalysis lastAnalysis;
+    sv::AnalysisResult lastAnalysis {};
+    mutable juce::SpinLock analysisLock;
     std::atomic<uint64_t> sampleCounter { 0 };
 
     void ensureSenderRegistration();
