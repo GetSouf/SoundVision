@@ -6,21 +6,23 @@ namespace sv
 void BandFilter::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
-    filter.prepare (spec);
+    highPass.prepare (spec);
+    lowPass.prepare (spec);
     dirty = true;
     updateCoefficients();
-    filter.reset();
+    reset();
 }
 
 void BandFilter::reset()
 {
-    filter.reset();
+    highPass.reset();
+    lowPass.reset();
 }
 
-void BandFilter::setBand (float newCentreHz, float newBandwidthHz)
+void BandFilter::setRange (float newLowHz, float newHighHz)
 {
-    centreHz = juce::jlimit (20.0f, 20000.0f, newCentreHz);
-    bandwidthHz = juce::jlimit (10.0f, 8000.0f, newBandwidthHz);
+    lowHz = juce::jlimit (1.0f, 20000.0f, newLowHz);
+    highHz = juce::jlimit (lowHz + 10.0f, 20000.0f, newHighHz);
     dirty = true;
 }
 
@@ -31,9 +33,11 @@ void BandFilter::updateCoefficients()
 
     dirty = false;
 
-    const float q = juce::jmax (0.1f, centreHz / juce::jmax (1.0f, bandwidthHz));
-    auto coeffs = juce::dsp::IIR::Coefficients<float>::makeBandPass (sampleRate, centreHz, q);
-    *filter.state = *coeffs;
+    const float hp = juce::jlimit (1.0f, (float) sampleRate * 0.45f, lowHz);
+    const float lp = juce::jlimit (hp + 10.0f, (float) sampleRate * 0.49f, highHz);
+
+    *highPass.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass (sampleRate, hp, 0.707f);
+    *lowPass.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass (sampleRate, lp, 0.707f);
 }
 
 void BandFilter::process (juce::AudioBuffer<float>& buffer)
@@ -45,7 +49,8 @@ void BandFilter::process (juce::AudioBuffer<float>& buffer)
 
     juce::dsp::AudioBlock<float> block (buffer);
     juce::dsp::ProcessContextReplacing<float> context (block);
-    filter.process (context);
+    highPass.process (context);
+    lowPass.process (context);
 }
 
 } // namespace sv

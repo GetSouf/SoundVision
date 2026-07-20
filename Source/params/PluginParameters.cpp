@@ -67,28 +67,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginParameters::createPara
         0));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { ParamIDs::centreHz, 1 },
-        "Centre Hz",
-        juce::NormalisableRange<float> (40.0f, 12000.0f, 0.01f, 0.35f),
-        500.0f,
+        juce::ParameterID { ParamIDs::freqLowHz, 1 },
+        "Low Hz",
+        juce::NormalisableRange<float> (0.0f, 20000.0f, 1.0f, 0.35f),
+        20.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { ParamIDs::bandwidthHz, 1 },
-        "Bandwidth",
-        juce::NormalisableRange<float> (20.0f, 4000.0f, 0.01f, 0.4f),
-        200.0f,
+        juce::ParameterID { ParamIDs::freqHighHz, 1 },
+        "High Hz",
+        juce::NormalisableRange<float> (0.0f, 20000.0f, 1.0f, 0.35f),
+        20000.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ParamIDs::particleRate, 1 },
-        "Particle Rate",
-        juce::NormalisableRange<float> (0.1f, 2.5f, 0.01f),
-        1.0f));
+        "Detail",
+        juce::NormalisableRange<float> (0.2f, 2.5f, 0.01f),
+        1.1f));
 
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ParamIDs::showOnlyBand, 1 },
-        "Band Only",
+        "Range Filter",
         true));
 
     return { params.begin(), params.end() };

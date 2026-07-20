@@ -20,10 +20,10 @@ void SpatialView::setSnapshotProvider (SnapshotProvider newProvider)
     provider = std::move (newProvider);
 }
 
-void SpatialView::setBandLabel (float newCentreHz, float newBandwidthHz)
+void SpatialView::setBandLabel (float newLowHz, float newHighHz)
 {
-    centreHz = newCentreHz;
-    bandwidthHz = newBandwidthHz;
+    lowHz = newLowHz;
+    highHz = newHighHz;
 }
 
 void SpatialView::resized()
@@ -54,13 +54,10 @@ void SpatialView::timerCallback()
             vs.rightEnergy = snap.rightEnergy;
             vs.midEnergy = snap.midEnergy;
             vs.sideEnergy = snap.sideEnergy;
-            vs.bandEnergy = juce::jmax (snap.bandEnergy, snap.spectralFocus * 0.75f);
-
-            // Prefer band imaging; spectral focus gently boosts overall presence.
-            const float boost = 0.85f + 0.15f * snap.spectralFocus;
-            vs.leftEnergy *= boost;
-            vs.rightEnergy *= boost;
-            vs.midEnergy *= boost;
+            vs.bandEnergy = juce::jmax (snap.bandEnergy, snap.spectralFocus * 0.7f);
+            vs.crest = snap.crest;
+            vs.punch = snap.punch;
+            vs.density = snap.density;
             visuals.push_back (vs);
         }
     }
@@ -100,7 +97,6 @@ void SpatialView::drawHead (juce::Graphics& g, juce::Point<float> centre) const
 
     g.setColour (juce::Colour (0xff9aa7b5));
     g.drawEllipse (centre.x - 12.0f, centre.y - 14.0f, 24.0f, 28.0f, 1.5f);
-
     g.fillEllipse (centre.x - 18.0f, centre.y - 4.0f, 7.0f, 10.0f);
     g.fillEllipse (centre.x + 11.0f, centre.y - 4.0f, 7.0f, 10.0f);
 }
@@ -116,9 +112,7 @@ void SpatialView::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white.withAlpha (0.7f));
     g.setFont (juce::FontOptions (13.0f));
-    const auto bandText = juce::String ("Band ")
-                        + juce::String (centreHz, 0) + " Hz  +/- "
-                        + juce::String (bandwidthHz * 0.5f, 0) + " Hz";
+    const auto bandText = juce::String ((int) lowHz) + " - " + juce::String ((int) highHz) + " Hz";
     g.drawText (bandText, bounds.reduced (12.0f).removeFromBottom (22.0f), juce::Justification::centredLeft);
 }
 

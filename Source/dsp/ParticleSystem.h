@@ -15,6 +15,8 @@ struct Particle
     float life = 0.0f;
     float maxLife = 1.0f;
     float size = 2.0f;
+    float angle = 0.0f;
+    float dashLength = 4.0f;
     uint32_t sourceId = 0;
 };
 
@@ -28,11 +30,14 @@ struct VisualSource
     float midEnergy = 0.0f;
     float sideEnergy = 0.0f;
     float bandEnergy = 0.0f;
+    float crest = 0.5f;
+    float punch = 0.0f;
+    float density = 0.5f;
 };
 
 /**
- * Particle field decoded from L / R / Mid energies.
- * One source can illuminate both ears (wide/side content) without a second label.
+ * Particle clouds around a centred listener.
+ * L/R/Mid weights place clouds; crest/punch/density reshape texture (compression etc.).
  */
 class ParticleSystem
 {
@@ -48,15 +53,11 @@ public:
 private:
     std::vector<Particle> particles;
     std::vector<VisualSource> lastSources;
-    int maxParticles = 1600;
+    int maxParticles = 2800;
     juce::Random random;
 
-    void emitLobe (juce::Point<float> origin,
-                   float energy,
-                   juce::Colour colour,
-                   uint32_t sourceId,
-                   float amount,
-                   float outwardBiasX);
+    void emitCloud (const VisualSource& source, float deltaSeconds, float emissionScale);
+    float sampleAngle (const VisualSource& source);
 };
 
 } // namespace sv

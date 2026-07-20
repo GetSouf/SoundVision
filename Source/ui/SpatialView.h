@@ -18,7 +18,7 @@ public:
 
     void setSnapshotProvider (SnapshotProvider provider);
     void setEmissionScale (float scale) noexcept { emissionScale = scale; }
-    void setBandLabel (float centreHz, float bandwidthHz);
+    void setBandLabel (float lowHz, float highHz);
     std::vector<SourceSnapshot> getLatestSnapshots() const { return latestSnapshots; }
 
     void paint (juce::Graphics& g) override;
@@ -33,8 +33,8 @@ private:
     ParticleSystem particles;
     std::vector<SourceSnapshot> latestSnapshots;
     float emissionScale = 1.0f;
-    float centreHz = 500.0f;
-    float bandwidthHz = 200.0f;
+    float lowHz = 20.0f;
+    float highHz = 20000.0f;
     double lastTickSeconds = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpatialView)

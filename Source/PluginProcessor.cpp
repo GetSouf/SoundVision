@@ -71,14 +71,14 @@ sv::PluginMode SoundVisionAudioProcessor::getMode() const noexcept
     return param->getIndex() == 1 ? sv::PluginMode::receiver : sv::PluginMode::sender;
 }
 
-float SoundVisionAudioProcessor::getCentreHz() const
+float SoundVisionAudioProcessor::getFreqLowHz() const
 {
-    return apvts.getRawParameterValue (sv::ParamIDs::centreHz)->load();
+    return apvts.getRawParameterValue (sv::ParamIDs::freqLowHz)->load();
 }
 
-float SoundVisionAudioProcessor::getBandwidthHz() const
+float SoundVisionAudioProcessor::getFreqHighHz() const
 {
-    return apvts.getRawParameterValue (sv::ParamIDs::bandwidthHz)->load();
+    return apvts.getRawParameterValue (sv::ParamIDs::freqHighHz)->load();
 }
 
 float SoundVisionAudioProcessor::getParticleRate() const
@@ -129,6 +129,9 @@ sv::SourceSnapshot SoundVisionAudioProcessor::makeLocalSnapshot() const
     snap.energy = analysis.energy;
     snap.bandEnergy = isBandOnly() ? analysis.bandEnergy : analysis.energy;
     snap.spectralFocus = analysis.spectralFocus;
+    snap.crest = analysis.crest;
+    snap.punch = analysis.punch;
+    snap.density = analysis.density;
     snap.samplePosition = sampleCounter.load (std::memory_order_relaxed);
     snap.active = true;
 
@@ -159,9 +162,8 @@ void SoundVisionAudioProcessor::unregisterSender()
         hub->unregisterSource (slot);
 }
 
-void SoundVisionAudioProcessor::publishSenderSnapshot (const sv::AnalysisResult& result)
+void SoundVisionAudioProcessor::publishSenderSnapshot()
 {
-    juce::ignoreUnused (result);
     const int slot = hubSlot.load (std::memory_order_acquire);
     if (slot < 0)
         return;
@@ -184,20 +186,24 @@ void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     else
         unregisterSender();
 
-    analysisBuffer.makeCopyOf (buffer, true);
+    float lowHz = getFreqLowHz();
+    float highHz = getFreqHighHz();
+    if (highHz < lowHz + 10.0f)
+        highHz = lowHz + 10.0f;
 
-    bandFilter.setBand (getCentreHz(), getBandwidthHz());
+    analysisBuffer.makeCopyOf (buffer, true);
+    bandFilter.setRange (lowHz, highHz);
     bandFilter.setEnabled (isBandOnly());
 
     if (isBandOnly())
         bandFilter.process (analysisBuffer);
 
-    const auto result = analyzer.analyse (buffer, analysisBuffer, getCentreHz(), getBandwidthHz());
+    const auto result = analyzer.analyse (buffer, analysisBuffer, lowHz, highHz);
     lastAnalysis.store (result);
     sampleCounter.fetch_add ((uint64_t) buffer.getNumSamples(), std::memory_order_relaxed);
 
     if (mode == sv::PluginMode::sender)
-        publishSenderSnapshot (result);
+        publishSenderSnapshot();
 }
 
 void SoundVisionAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

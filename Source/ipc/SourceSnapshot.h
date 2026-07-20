@@ -10,11 +10,6 @@ namespace sv
 constexpr int kMaxSources = 32;
 constexpr int kMaxNameChars = 32;
 
-/**
- * One analysed frame from a Sender.
- * Imaging is carried as Left / Right / Mid / Side energies so a wide
- * (side-only) track lights both ears without inventing a second source.
- */
 struct SourceSnapshot
 {
     uint32_t sourceId = 0;
@@ -25,15 +20,18 @@ struct SourceSnapshot
     float rightEnergy = 0.0f;
     float midEnergy = 0.0f;
     float sideEnergy = 0.0f;
-
-    /** Soft-capped broadband magnitude. */
     float energy = 0.0f;
-
-    /** Soft-capped selected-band magnitude. */
     float bandEnergy = 0.0f;
-
-    /** FFT focus inside the selected band. */
     float spectralFocus = 0.0f;
+
+    /** Peak/RMS style punch. High = transient/open dynamics; low = compressed. */
+    float crest = 0.5f;
+
+    /** Short/long energy ratio — visible as burstiness. */
+    float punch = 0.0f;
+
+    /** Fill factor for clouds: compressed material tends toward denser fog. */
+    float density = 0.5f;
 
     uint64_t samplePosition = 0;
     bool active = false;

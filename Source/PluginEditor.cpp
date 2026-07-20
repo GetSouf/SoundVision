@@ -17,9 +17,9 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
       processorRef (p)
 {
     setLookAndFeel (&lookAndFeel);
-    setSize (920, 600);
+    setSize (960, 640);
     setResizable (true, true);
-    setResizeLimits (780, 520, 1500, 960);
+    setResizeLimits (820, 540, 1600, 1000);
 
     titleLabel.setText ("SoundVision", juce::dontSendNotification);
     titleLabel.setFont (juce::FontOptions (28.0f, juce::Font::bold));
@@ -54,16 +54,16 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     };
     addAndMakeVisible (nameEditor);
 
-    styleSlider (centreSlider, centreLabel, "Centre Hz");
-    styleSlider (bandwidthSlider, bandwidthLabel, "Bandwidth");
-    styleSlider (particleSlider, particleLabel, "Particles");
+    styleSlider (lowSlider, lowLabel, "Low Hz");
+    styleSlider (highSlider, highLabel, "High Hz");
+    styleSlider (particleSlider, particleLabel, "Detail");
 
-    centreSlider.setNumDecimalPlacesToDisplay (0);
-    bandwidthSlider.setNumDecimalPlacesToDisplay (0);
+    lowSlider.setNumDecimalPlacesToDisplay (0);
+    highSlider.setNumDecimalPlacesToDisplay (0);
     particleSlider.setNumDecimalPlacesToDisplay (2);
 
-    addAndMakeVisible (centreSlider);
-    addAndMakeVisible (bandwidthSlider);
+    addAndMakeVisible (lowSlider);
+    addAndMakeVisible (highSlider);
     addAndMakeVisible (particleSlider);
     addAndMakeVisible (bandOnlyButton);
     addAndMakeVisible (spatialView);
@@ -72,8 +72,8 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     auto& apvts = processorRef.getAPVTS();
     modeAttachment = std::make_unique<BoxAttachment> (apvts, sv::ParamIDs::mode, modeBox);
     colourAttachment = std::make_unique<BoxAttachment> (apvts, sv::ParamIDs::sourceColour, colourBox);
-    centreAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::centreHz, centreSlider);
-    bandwidthAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::bandwidthHz, bandwidthSlider);
+    lowAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::freqLowHz, lowSlider);
+    highAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::freqHighHz, highSlider);
     particleAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::particleRate, particleSlider);
     bandOnlyAttachment = std::make_unique<ButtonAttachment> (apvts, sv::ParamIDs::showOnlyBand, bandOnlyButton);
 
@@ -106,23 +106,24 @@ void SoundVisionAudioProcessorEditor::syncModeVisibility()
 void SoundVisionAudioProcessorEditor::refreshTitle()
 {
     if (processorRef.getMode() == sv::PluginMode::receiver)
-        subtitleLabel.setText ("Receiver - decode the stereo field around the head", juce::dontSendNotification);
+        subtitleLabel.setText ("Receiver - particle clouds around the listener", juce::dontSendNotification);
     else
-        subtitleLabel.setText ("Sender - publish this track's L/R/Mid imaging", juce::dontSendNotification);
+        subtitleLabel.setText ("Sender - publish imaging + dynamics texture", juce::dontSendNotification);
 }
 
 void SoundVisionAudioProcessorEditor::timerCallback()
 {
     spatialView.setEmissionScale (processorRef.getParticleRate());
-    spatialView.setBandLabel (processorRef.getCentreHz(), processorRef.getBandwidthHz());
+    spatialView.setBandLabel (processorRef.getFreqLowHz(), processorRef.getFreqHighHz());
     sourceLegend.setSources (spatialView.getLatestSnapshots());
 
     const auto analysis = processorRef.getLocalAnalysis();
     statusLabel.setText (
-        "L " + juce::String (analysis.leftEnergy, 2)
-            + "  M " + juce::String (analysis.midEnergy, 2)
-            + "  R " + juce::String (analysis.rightEnergy, 2)
-            + "  S " + juce::String (analysis.sideEnergy, 2),
+        "L/M/R " + juce::String (analysis.leftEnergy, 2) + "/"
+            + juce::String (analysis.midEnergy, 2) + "/"
+            + juce::String (analysis.rightEnergy, 2)
+            + "   crest " + juce::String (analysis.crest, 2)
+            + " dens " + juce::String (analysis.density, 2),
         juce::dontSendNotification);
 
     syncModeVisibility();
@@ -148,7 +149,7 @@ void SoundVisionAudioProcessorEditor::resized()
 
     area.removeFromTop (8);
     auto controls = area.removeFromLeft (280);
-    auto legend = area.removeFromBottom (130);
+    auto legend = area.removeFromBottom (150);
     sourceLegend.setBounds (legend.reduced (8, 4));
     spatialView.setBounds (area.reduced (8, 0));
 
@@ -171,8 +172,8 @@ void SoundVisionAudioProcessorEditor::resized()
 
     auto knobs = row (130);
     const int knobW = knobs.getWidth() / 3;
-    centreSlider.setBounds (knobs.removeFromLeft (knobW).reduced (4, 12));
-    bandwidthSlider.setBounds (knobs.removeFromLeft (knobW).reduced (4, 12));
+    lowSlider.setBounds (knobs.removeFromLeft (knobW).reduced (4, 12));
+    highSlider.setBounds (knobs.removeFromLeft (knobW).reduced (4, 12));
     particleSlider.setBounds (knobs.reduced (4, 12));
 
     bandOnlyButton.setBounds (row (28));

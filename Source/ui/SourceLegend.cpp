@@ -22,9 +22,10 @@ void SourceLegend::paint (juce::Graphics& g)
     g.setFont (juce::FontOptions (13.0f, juce::Font::bold));
     g.drawText ("Sources", area.removeFromTop (18.0f), juce::Justification::centredLeft);
 
-    g.setFont (juce::FontOptions (11.0f));
+    g.setFont (juce::FontOptions (10.0f));
     g.setColour (juce::Colour (0xff9aa7b5));
-    g.drawText ("L / M / R = imaging lobes", area.removeFromTop (16.0f), juce::Justification::centredLeft);
+    g.drawText ("Dense fog ~ compressed   |   Streaky ~ open/punchy",
+                area.removeFromTop (14.0f), juce::Justification::centredLeft);
     area.removeFromTop (6.0f);
 
     if (sources.empty())
@@ -35,36 +36,43 @@ void SourceLegend::paint (juce::Graphics& g)
 
     for (const auto& snap : sources)
     {
-        auto row = area.removeFromTop (28.0f);
+        auto row = area.removeFromTop (34.0f);
         area.removeFromTop (4.0f);
 
         g.setColour (juce::Colour (snap.colourARGB));
-        g.fillEllipse (row.getX(), row.getCentreY() - 6.0f, 12.0f, 12.0f);
+        g.fillEllipse (row.getX(), row.getY() + 4.0f, 14.0f, 14.0f);
 
         g.setColour (juce::Colour (0xffe8eef5));
         g.setFont (juce::FontOptions (12.0f));
         const auto name = juce::String::fromUTF8 (snap.name);
         g.drawText (name.isNotEmpty() ? name : "Source",
-                    row.withTrimmedLeft (18.0f).removeFromLeft (100.0f),
+                    row.withTrimmedLeft (22.0f).removeFromLeft (90.0f).removeFromTop (16.0f),
                     juce::Justification::centredLeft,
                     true);
 
-        auto meters = row.withTrimmedLeft (120.0f);
+        g.setColour (juce::Colour (0xff9aa7b5));
+        g.setFont (juce::FontOptions (10.0f));
+        g.drawText ("crest " + juce::String (snap.crest, 2)
+                        + "  dens " + juce::String (snap.density, 2)
+                        + "  punch " + juce::String (snap.punch, 2),
+                    row.withTrimmedLeft (22.0f).removeFromBottom (14.0f),
+                    juce::Justification::centredLeft,
+                    true);
+
+        auto meters = row.withTrimmedLeft (210.0f);
         const float meterW = meters.getWidth() / 3.0f;
         const float values[3] { snap.leftEnergy, snap.midEnergy, snap.rightEnergy };
         const char* labels[3] { "L", "M", "R" };
 
         for (int i = 0; i < 3; ++i)
         {
-            auto cell = meters.removeFromLeft (meterW).reduced (2.0f, 4.0f);
+            auto cell = meters.removeFromLeft (meterW).reduced (2.0f, 6.0f);
             g.setColour (juce::Colour (0xff0f141a));
             g.fillRoundedRectangle (cell, 3.0f);
-
             auto fill = cell;
             fill.setWidth (cell.getWidth() * juce::jlimit (0.0f, 1.0f, values[i]));
             g.setColour (juce::Colour (snap.colourARGB).withAlpha (0.85f));
             g.fillRoundedRectangle (fill, 3.0f);
-
             g.setColour (juce::Colours::white.withAlpha (0.55f));
             g.setFont (juce::FontOptions (9.0f));
             g.drawText (labels[i], cell, juce::Justification::centred);

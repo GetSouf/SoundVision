@@ -15,11 +15,14 @@ struct AnalysisResult
     float energy = 0.0f;
     float bandEnergy = 0.0f;
     float spectralFocus = 0.0f;
+    float crest = 0.5f;
+    float punch = 0.0f;
+    float density = 0.5f;
 };
 
 /**
- * Stable stereo-field metrics: per-channel RMS plus true Mid/Side RMS,
- * with fast-attack / slow-release smoothing to kill frame jitter.
+ * Stereo-field + dynamics metrics.
+ * Crest/punch/density make compression and transient shaping readable as cloud texture.
  */
 class StereoAnalyzer
 {
@@ -29,8 +32,8 @@ public:
 
     AnalysisResult analyse (const juce::AudioBuffer<float>& dryBuffer,
                             const juce::AudioBuffer<float>& bandBuffer,
-                            float centreHz,
-                            float bandwidthHz) noexcept;
+                            float lowHz,
+                            float highHz) noexcept;
 
 private:
     static constexpr int fftOrder = 11;
@@ -47,9 +50,12 @@ private:
     bool nextBlockReady = false;
     double sampleRate = 44100.0;
 
+    float peakEnv = 0.0f;
+    float shortEnv = 0.0f;
+    float longEnv = 0.0f;
     AnalysisResult smoothed {};
 
-    float computeSpectralFocus (float centreHz, float bandwidthHz) noexcept;
+    float computeSpectralFocus (float lowHz, float highHz) noexcept;
     void pushSamplesForFft (const juce::AudioBuffer<float>& buffer) noexcept;
 
     static float softClip01 (float x) noexcept;
@@ -58,7 +64,8 @@ private:
                                  float& leftRms,
                                  float& rightRms,
                                  float& midRms,
-                                 float& sideRms) noexcept;
+                                 float& sideRms,
+                                 float& peakAbs) noexcept;
 };
 
 } // namespace sv

@@ -30,17 +30,17 @@ private:
     juce::ComboBox modeBox;
     juce::ComboBox colourBox;
     juce::TextEditor nameEditor;
-    juce::ToggleButton bandOnlyButton { "Band Only" };
+    juce::ToggleButton bandOnlyButton { "Range Filter" };
 
-    juce::Slider centreSlider;
-    juce::Slider bandwidthSlider;
+    juce::Slider lowSlider;
+    juce::Slider highSlider;
     juce::Slider particleSlider;
 
     juce::Label modeLabel;
     juce::Label colourLabel;
     juce::Label nameLabel;
-    juce::Label centreLabel;
-    juce::Label bandwidthLabel;
+    juce::Label lowLabel;
+    juce::Label highLabel;
     juce::Label particleLabel;
     juce::Label statusLabel;
 
@@ -53,8 +53,8 @@ private:
 
     std::unique_ptr<BoxAttachment> modeAttachment;
     std::unique_ptr<BoxAttachment> colourAttachment;
-    std::unique_ptr<SliderAttachment> centreAttachment;
-    std::unique_ptr<SliderAttachment> bandwidthAttachment;
+    std::unique_ptr<SliderAttachment> lowAttachment;
+    std::unique_ptr<SliderAttachment> highAttachment;
     std::unique_ptr<SliderAttachment> particleAttachment;
     std::unique_ptr<ButtonAttachment> bandOnlyAttachment;
 

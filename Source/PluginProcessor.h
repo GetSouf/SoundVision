@@ -45,13 +45,13 @@ public:
 
     std::vector<sv::SourceSnapshot> getReceiverSnapshots() const;
     sv::AnalysisResult getLocalAnalysis() const noexcept { return lastAnalysis.load(); }
+    sv::SourceSnapshot makeLocalSnapshot() const;
 
-    float getCentreHz() const;
-    float getBandwidthHz() const;
+    float getFreqLowHz() const;
+    float getFreqHighHz() const;
     float getParticleRate() const;
     bool isBandOnly() const;
     juce::Colour getSourceColour() const;
-    sv::SourceSnapshot makeLocalSnapshot() const;
 
 private:
     juce::AudioProcessorValueTreeState apvts;
@@ -75,6 +75,9 @@ private:
         std::atomic<float> energy { 0.0f };
         std::atomic<float> bandEnergy { 0.0f };
         std::atomic<float> spectralFocus { 0.0f };
+        std::atomic<float> crest { 0.5f };
+        std::atomic<float> punch { 0.0f };
+        std::atomic<float> density { 0.5f };
 
         void store (const sv::AnalysisResult& r) noexcept
         {
@@ -85,6 +88,9 @@ private:
             energy.store (r.energy, std::memory_order_relaxed);
             bandEnergy.store (r.bandEnergy, std::memory_order_relaxed);
             spectralFocus.store (r.spectralFocus, std::memory_order_relaxed);
+            crest.store (r.crest, std::memory_order_relaxed);
+            punch.store (r.punch, std::memory_order_relaxed);
+            density.store (r.density, std::memory_order_relaxed);
         }
 
         sv::AnalysisResult load() const noexcept
@@ -96,7 +102,10 @@ private:
                 sideEnergy.load (std::memory_order_relaxed),
                 energy.load (std::memory_order_relaxed),
                 bandEnergy.load (std::memory_order_relaxed),
-                spectralFocus.load (std::memory_order_relaxed)
+                spectralFocus.load (std::memory_order_relaxed),
+                crest.load (std::memory_order_relaxed),
+                punch.load (std::memory_order_relaxed),
+                density.load (std::memory_order_relaxed)
             };
         }
     };
@@ -106,7 +115,7 @@ private:
 
     void ensureSenderRegistration();
     void unregisterSender();
-    void publishSenderSnapshot (const sv::AnalysisResult& result);
+    void publishSenderSnapshot();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundVisionAudioProcessor)
 };
