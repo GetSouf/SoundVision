@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(SoundVision VERSION 0.2.1 LANGUAGES C CXX)
+project(SoundVision VERSION 0.3.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,9 +39,10 @@ target_sources(SoundVision
         Source/PluginEditor.cpp
         Source/dsp/BandFilter.cpp
         Source/dsp/StereoAnalyzer.cpp
-        Source/dsp/ParticleSystem.cpp
         Source/ipc/SoundVisionHub.cpp
         Source/ui/SpatialView.cpp
+        Source/ui/FieldRenderer.cpp
+        Source/ui/BandSpectrumView.cpp
         Source/ui/SourceLegend.cpp
         Source/ui/SoundVisionLookAndFeel.cpp
         Source/params/PluginParameters.cpp)

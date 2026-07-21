@@ -5,7 +5,7 @@
 namespace sv
 {
 
-/** Band-limit visualisation audio with a high-pass + low-pass pair (Hz range). */
+/** High-pass + low-pass pair. lowHz ~ 0 bypasses HP; high near Nyquist bypasses LP. */
 class BandFilter
 {
 public:
@@ -24,10 +24,12 @@ private:
                                    juce::dsp::IIR::Coefficients<float>> lowPass;
 
     double sampleRate = 44100.0;
-    float lowHz = 20.0f;
+    float lowHz = 0.0f;
     float highHz = 20000.0f;
     bool enabled = true;
     bool dirty = true;
+    bool useHighPass = false;
+    bool useLowPass = true;
 
     void updateCoefficients();
 };

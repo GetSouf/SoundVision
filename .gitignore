@@ -34,3 +34,9 @@ JuceLibraryCode/
 # Misc
 *.log
 .cache/
+
+# Local install/update helper (writes to Program Files)
+scripts/install-vst3.ps1
+
+# Release packaging output (upload zip via GitHub Releases)
+dist/

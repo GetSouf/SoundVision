@@ -24,7 +24,7 @@ void SourceLegend::paint (juce::Graphics& g)
 
     g.setFont (juce::FontOptions (10.0f));
     g.setColour (juce::Colour (0xff9aa7b5));
-    g.drawText ("Continuous stereo field  |  diffuse ~ reverb/width",
+    g.drawText ("pan = bus centroid   |   corr meter on the right",
                 area.removeFromTop (14.0f), juce::Justification::centredLeft);
     area.removeFromTop (6.0f);
 
@@ -52,9 +52,9 @@ void SourceLegend::paint (juce::Graphics& g)
 
         g.setColour (juce::Colour (0xff9aa7b5));
         g.setFont (juce::FontOptions (10.0f));
-        g.drawText ("diff " + juce::String (snap.diffuseness, 2)
-                        + "  dens " + juce::String (snap.density, 2)
-                        + "  punch " + juce::String (snap.punch, 2),
+        g.drawText ("pan " + juce::String (snap.panCentroid, 2)
+                        + "  corr " + juce::String (snap.correlation, 2)
+                        + "  diff " + juce::String (snap.diffuseness, 2),
                     row.withTrimmedLeft (22.0f).removeFromBottom (14.0f),
                     juce::Justification::centredLeft,
                     true);

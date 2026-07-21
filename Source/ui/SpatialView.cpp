@@ -6,7 +6,6 @@ namespace sv
 SpatialView::SpatialView()
 {
     setOpaque (true);
-    lastTickSeconds = juce::Time::getMillisecondCounterHiRes() * 0.001;
     startTimerHz (60);
 }
 
@@ -32,38 +31,27 @@ void SpatialView::resized()
 
 void SpatialView::timerCallback()
 {
-    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
-    const float dt = (float) (now - lastTickSeconds);
-    lastTickSeconds = now;
-
-    std::vector<VisualSource> visuals;
+    fieldSources.clear();
     latestSnapshots.clear();
 
     if (provider)
     {
         latestSnapshots = provider();
-        visuals.reserve (latestSnapshots.size());
+        fieldSources.reserve (latestSnapshots.size());
 
         for (const auto& snap : latestSnapshots)
         {
-            VisualSource vs;
-            vs.sourceId = snap.sourceId;
-            vs.name = juce::String::fromUTF8 (snap.name);
-            vs.colour = juce::Colour (snap.colourARGB);
-            vs.field = snap.field;
-            vs.bandEnergy = juce::jmax (snap.bandEnergy, snap.spectralFocus * 0.7f);
-            vs.diffuseness = snap.diffuseness;
-            vs.crest = snap.crest;
-            vs.punch = snap.punch;
-            vs.density = snap.density;
-            vs.leftEnergy = snap.leftEnergy;
-            vs.centreEnergy = snap.centreEnergy;
-            vs.rightEnergy = snap.rightEnergy;
-            visuals.push_back (vs);
+            FieldSource fs;
+            fs.sourceId = snap.sourceId;
+            fs.colour = juce::Colour (snap.colourARGB);
+            fs.polarField = snap.polarField;
+            fs.correlation = snap.correlation;
+            fs.panCentroid = snap.panCentroid;
+            fs.bandEnergy = snap.bandEnergy;
+            fieldSources.push_back (fs);
         }
     }
 
-    particles.update (dt, visuals, emissionScale);
     repaint();
 }
 
@@ -78,8 +66,14 @@ void SpatialView::drawGrid (juce::Graphics& g, juce::Rectangle<float> area, juce
     for (float r : { 0.35f, 0.6f, 0.85f })
         g.drawEllipse (centre.x - scale * r, centre.y - scale * r, scale * r * 2.0f, scale * r * 2.0f, 1.0f);
 
+    // Diagonal guides like Insight.
+    for (float t : { -0.55f, 0.0f, 0.55f })
+    {
+        const float x0 = centre.x + t * scale;
+        g.drawLine (x0, centre.y, centre.x, centre.y - scale * 0.9f, 1.0f);
+    }
+
     g.drawLine (centre.x - scale, centre.y, centre.x + scale, centre.y, 1.0f);
-    g.drawLine (centre.x, centre.y - scale, centre.x, centre.y + scale, 1.0f);
 
     g.setColour (juce::Colours::white.withAlpha (0.35f));
     g.setFont (juce::FontOptions (11.0f));
@@ -95,7 +89,6 @@ void SpatialView::drawHead (juce::Graphics& g, juce::Point<float> centre) const
 {
     g.setColour (juce::Colour (0xffd9e2ec));
     g.fillEllipse (centre.x - 12.0f, centre.y - 14.0f, 24.0f, 28.0f);
-
     g.setColour (juce::Colour (0xff9aa7b5));
     g.drawEllipse (centre.x - 12.0f, centre.y - 14.0f, 24.0f, 28.0f, 1.5f);
     g.fillEllipse (centre.x - 18.0f, centre.y - 4.0f, 7.0f, 10.0f);
@@ -108,7 +101,7 @@ void SpatialView::paint (juce::Graphics& g)
     const auto centre = bounds.getCentre();
 
     drawGrid (g, bounds, centre);
-    particles.paint (g, bounds, centre);
+    fieldRenderer.paint (g, bounds, centre, fieldSources, viewStyle, detailScale);
     drawHead (g, centre);
 
     g.setColour (juce::Colours::white.withAlpha (0.7f));

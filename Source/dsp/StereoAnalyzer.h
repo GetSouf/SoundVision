@@ -7,9 +7,14 @@
 namespace sv
 {
 
+constexpr int kSpectrumBins = 64;
+
 struct AnalysisResult
 {
-    std::array<float, kAngularBins> field {};
+    std::array<float, kPolarAngleBins * kPolarRadiusBins> polarField {};
+    std::array<float, kSpectrumBins> spectrum {};
+    float panCentroid = 0.0f;
+    float correlation = 1.0f;
     float leftEnergy = 0.0f;
     float centreEnergy = 0.0f;
     float rightEnergy = 0.0f;
@@ -23,8 +28,8 @@ struct AnalysisResult
 };
 
 /**
- * Builds a continuous angular energy map of the stereo image.
- * Pan moves the mass across the stage; low L/R correlation (reverb) widens it.
+ * Mid/Side polar histogram — same family as vectorscope / iZotope Sound Field.
+ * Pan of the bus is encoded in the Mid/Side angle of every sample.
  */
 class StereoAnalyzer
 {
@@ -58,12 +63,15 @@ private:
     AnalysisResult smoothed {};
 
     float computeSpectralFocus (float lowHz, float highHz) noexcept;
+    void fillSpectrum (std::array<float, kSpectrumBins>& out) noexcept;
     void pushSamplesForFft (const juce::AudioBuffer<float>& buffer) noexcept;
-    void buildAngularField (const juce::AudioBuffer<float>& buffer,
-                            std::array<float, kAngularBins>& outField,
-                            float& diffusenessOut,
-                            float& rmsOut,
-                            float& peakOut) noexcept;
+    void buildPolarField (const juce::AudioBuffer<float>& buffer,
+                          std::array<float, kPolarAngleBins * kPolarRadiusBins>& outField,
+                          float& correlationOut,
+                          float& panCentroidOut,
+                          float& rmsOut,
+                          float& peakOut,
+                          float& diffusenessOut) noexcept;
 
     static float softClip01 (float x) noexcept;
     static float smoothMeter (float current, float target) noexcept;

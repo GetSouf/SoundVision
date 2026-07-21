@@ -17,9 +17,9 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
       processorRef (p)
 {
     setLookAndFeel (&lookAndFeel);
-    setSize (960, 640);
+    setSize (960, 680);
     setResizable (true, true);
-    setResizeLimits (820, 540, 1600, 1000);
+    setResizeLimits (820, 580, 1600, 1000);
 
     titleLabel.setText ("SoundVision", juce::dontSendNotification);
     titleLabel.setFont (juce::FontOptions (28.0f, juce::Font::bold));
@@ -39,18 +39,31 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
 
     modeLabel.setText ("Mode", juce::dontSendNotification);
     colourLabel.setText ("Colour", juce::dontSendNotification);
+    viewStyleLabel.setText ("View", juce::dontSendNotification);
     nameLabel.setText ("Source Name", juce::dontSendNotification);
+    spectrumLabel.setText ("Band", juce::dontSendNotification);
     statusLabel.setColour (juce::Label::textColourId, juce::Colour (0xff9aa7b5));
 
     addAndMakeVisible (modeLabel);
     addAndMakeVisible (colourLabel);
+    addAndMakeVisible (viewStyleLabel);
     addAndMakeVisible (nameLabel);
+    addAndMakeVisible (spectrumLabel);
     addAndMakeVisible (statusLabel);
 
     modeBox.addItemList ({ "Sender", "Receiver" }, 1);
     colourBox.addItemList (sv::PluginParameters::colourChoices(), 1);
+    viewStyleBox.addItemList ({ "Insight", "Grid" }, 1);
     addAndMakeVisible (modeBox);
     addAndMakeVisible (colourBox);
+    addAndMakeVisible (viewStyleBox);
+
+    viewStyleBox.setSelectedId (1, juce::dontSendNotification);
+    viewStyleBox.onChange = [this]
+    {
+        spatialView.setViewStyle (viewStyleBox.getSelectedId() == 2 ? sv::ViewStyle::grid
+                                                                    : sv::ViewStyle::insight);
+    };
 
     nameEditor.setText (processorRef.getSourceDisplayName(), juce::dontSendNotification);
     nameEditor.setTextToShowWhenEmpty ("Vocals / Guitar / Drums...", juce::Colour (0xff6b7785));
@@ -71,9 +84,15 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     addAndMakeVisible (lowSlider);
     addAndMakeVisible (highSlider);
     addAndMakeVisible (particleSlider);
+    addAndMakeVisible (bandSpectrum);
     addAndMakeVisible (bandOnlyButton);
     addAndMakeVisible (spatialView);
     addAndMakeVisible (sourceLegend);
+
+    bandSpectrum.setFreqSetter ([this] (float lowHz, float highHz)
+    {
+        processorRef.setFreqRange (lowHz, highHz);
+    });
 
     auto& apvts = processorRef.getAPVTS();
     modeAttachment = std::make_unique<BoxAttachment> (apvts, sv::ParamIDs::mode, modeBox);
@@ -93,7 +112,7 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
 
     modeBox.onChange = [this] { syncModeVisibility(); };
     syncModeVisibility();
-    startTimerHz (20);
+    startTimerHz (30);
 }
 
 SoundVisionAudioProcessorEditor::~SoundVisionAudioProcessorEditor()
@@ -112,24 +131,28 @@ void SoundVisionAudioProcessorEditor::syncModeVisibility()
 void SoundVisionAudioProcessorEditor::refreshTitle()
 {
     if (processorRef.getMode() == sv::PluginMode::receiver)
-        subtitleLabel.setText ("Receiver - particle clouds around the listener", juce::dontSendNotification);
+        subtitleLabel.setText ("Receiver - Insight / Grid sound field", juce::dontSendNotification);
     else
-        subtitleLabel.setText ("Sender - publish imaging + dynamics texture", juce::dontSendNotification);
+        subtitleLabel.setText ("Sender - Mid/Side polar field + pan centroid", juce::dontSendNotification);
 }
 
 void SoundVisionAudioProcessorEditor::timerCallback()
 {
-    spatialView.setEmissionScale (processorRef.getParticleRate());
+    spatialView.setDetailScale (processorRef.getParticleRate());
     spatialView.setBandLabel (processorRef.getFreqLowHz(), processorRef.getFreqHighHz());
     sourceLegend.setSources (spatialView.getLatestSnapshots());
 
     const auto analysis = processorRef.getLocalAnalysis();
+    bandSpectrum.setSpectrum (analysis.spectrum);
+    bandSpectrum.setCuts (processorRef.getFreqLowHz(), processorRef.getFreqHighHz());
+
     statusLabel.setText (
-        "field L/C/R " + juce::String (analysis.leftEnergy, 2) + "/"
+        "pan " + juce::String (analysis.panCentroid, 2)
+            + "  corr " + juce::String (analysis.correlation, 2)
+            + "  L/C/R "
+            + juce::String (analysis.leftEnergy, 2) + "/"
             + juce::String (analysis.centreEnergy, 2) + "/"
-            + juce::String (analysis.rightEnergy, 2)
-            + "   diff " + juce::String (analysis.diffuseness, 2)
-            + " dens " + juce::String (analysis.density, 2),
+            + juce::String (analysis.rightEnergy, 2),
         juce::dontSendNotification);
 
     syncModeVisibility();
@@ -174,6 +197,7 @@ void SoundVisionAudioProcessorEditor::resized()
     };
 
     placeLabeled (row (54), modeLabel, modeBox);
+    placeLabeled (row (54), viewStyleLabel, viewStyleBox);
     placeLabeled (row (54), colourLabel, colourBox);
     placeLabeled (row (54), nameLabel, nameEditor);
 
@@ -183,6 +207,7 @@ void SoundVisionAudioProcessorEditor::resized()
     highSlider.setBounds (knobs.removeFromLeft (knobW).reduced (4, 12));
     particleSlider.setBounds (knobs.reduced (4, 12));
 
+    placeLabeled (row (88), spectrumLabel, bandSpectrum);
     bandOnlyButton.setBounds (row (28));
     statusLabel.setBounds (controls.removeFromBottom (48));
 }

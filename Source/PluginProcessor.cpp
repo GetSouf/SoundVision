@@ -34,7 +34,8 @@ void SoundVisionAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         (juce::uint32) juce::jmax (1, getTotalNumInputChannels())
     };
 
-    bandFilter.prepare (spec);
+    visualFilter.prepare (spec);
+    audioFilter.prepare (spec);
     analyzer.prepare (sampleRate, samplesPerBlock);
     analysisBuffer.setSize (juce::jmax (2, getTotalNumInputChannels()), samplesPerBlock, false, false, true);
 
@@ -46,7 +47,8 @@ void SoundVisionAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
 void SoundVisionAudioProcessor::releaseResources()
 {
-    bandFilter.reset();
+    visualFilter.reset();
+    audioFilter.reset();
     analyzer.reset();
 }
 
@@ -86,9 +88,18 @@ float SoundVisionAudioProcessor::getParticleRate() const
     return apvts.getRawParameterValue (sv::ParamIDs::particleRate)->load();
 }
 
-bool SoundVisionAudioProcessor::isBandOnly() const
+bool SoundVisionAudioProcessor::isAudioFilterEnabled() const
 {
     return apvts.getRawParameterValue (sv::ParamIDs::showOnlyBand)->load() > 0.5f;
+}
+
+void SoundVisionAudioProcessor::setFreqRange (float lowHz, float highHz)
+{
+    if (auto* low = apvts.getParameter (sv::ParamIDs::freqLowHz))
+        low->setValueNotifyingHost (low->convertTo0to1 (juce::jlimit (0.0f, 20000.0f, lowHz)));
+
+    if (auto* high = apvts.getParameter (sv::ParamIDs::freqHighHz))
+        high->setValueNotifyingHost (high->convertTo0to1 (juce::jlimit (0.0f, 20000.0f, highHz)));
 }
 
 juce::Colour SoundVisionAudioProcessor::getSourceColour() const
@@ -128,12 +139,14 @@ sv::SourceSnapshot SoundVisionAudioProcessor::makeLocalSnapshot() const
     sv::SourceSnapshot snap;
     snap.sourceId = instanceId;
     snap.colourARGB = getSourceColour().getARGB();
-    snap.field = analysis.field;
+    snap.polarField = analysis.polarField;
+    snap.panCentroid = analysis.panCentroid;
+    snap.correlation = analysis.correlation;
     snap.leftEnergy = analysis.leftEnergy;
     snap.centreEnergy = analysis.centreEnergy;
     snap.rightEnergy = analysis.rightEnergy;
     snap.energy = analysis.energy;
-    snap.bandEnergy = isBandOnly() ? analysis.bandEnergy : analysis.energy;
+    snap.bandEnergy = analysis.bandEnergy;
     snap.spectralFocus = analysis.spectralFocus;
     snap.diffuseness = analysis.diffuseness;
     snap.crest = analysis.crest;
@@ -198,18 +211,25 @@ void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
     if (highHz < lowHz + 10.0f)
         highHz = lowHz + 10.0f;
 
+    // Always band-limit what the spatial view analyses.
     analysisBuffer.makeCopyOf (buffer, true);
-    bandFilter.setRange (lowHz, highHz);
-    bandFilter.setEnabled (isBandOnly());
-
-    if (isBandOnly())
-        bandFilter.process (analysisBuffer);
+    visualFilter.setEnabled (true);
+    visualFilter.setRange (lowHz, highHz);
+    visualFilter.process (analysisBuffer);
 
     const auto result = analyzer.analyse (buffer, analysisBuffer, lowHz, highHz);
 
     {
         const juce::SpinLock::ScopedLockType lock (analysisLock);
         lastAnalysis = result;
+    }
+
+    // Optional: same cut applied to audible audio.
+    if (isAudioFilterEnabled())
+    {
+        audioFilter.setEnabled (true);
+        audioFilter.setRange (lowHz, highHz);
+        audioFilter.process (buffer);
     }
 
     sampleCounter.fetch_add ((uint64_t) buffer.getNumSamples(), std::memory_order_relaxed);

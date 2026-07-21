@@ -70,7 +70,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginParameters::createPara
         juce::ParameterID { ParamIDs::freqLowHz, 1 },
         "Low Hz",
         juce::NormalisableRange<float> (0.0f, 20000.0f, 1.0f, 0.35f),
-        20.0f,
+        0.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
@@ -88,8 +88,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginParameters::createPara
 
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ParamIDs::showOnlyBand, 1 },
-        "Range Filter",
-        true));
+        "Filter Audio",
+        false));
 
     return { params.begin(), params.end() };
 }

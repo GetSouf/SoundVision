@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dsp/ParticleSystem.h"
+#include "ui/FieldRenderer.h"
 #include <JuceHeader.h>
 #include <functional>
 #include <vector>
@@ -17,7 +17,8 @@ public:
     ~SpatialView() override;
 
     void setSnapshotProvider (SnapshotProvider provider);
-    void setEmissionScale (float scale) noexcept { emissionScale = scale; }
+    void setDetailScale (float scale) noexcept { detailScale = scale; }
+    void setViewStyle (ViewStyle style) noexcept { viewStyle = style; }
     void setBandLabel (float lowHz, float highHz);
     std::vector<SourceSnapshot> getLatestSnapshots() const { return latestSnapshots; }
 
@@ -30,12 +31,13 @@ private:
     void drawGrid (juce::Graphics& g, juce::Rectangle<float> area, juce::Point<float> centre) const;
 
     SnapshotProvider provider;
-    ParticleSystem particles;
+    FieldRenderer fieldRenderer;
+    std::vector<FieldSource> fieldSources;
     std::vector<SourceSnapshot> latestSnapshots;
-    float emissionScale = 1.0f;
+    ViewStyle viewStyle = ViewStyle::insight;
+    float detailScale = 1.0f;
     float lowHz = 20.0f;
     float highHz = 20000.0f;
-    double lastTickSeconds = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpatialView)
 };

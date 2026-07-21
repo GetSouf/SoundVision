@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "ui/BandSpectrumView.h"
 #include "ui/SoundVisionLookAndFeel.h"
 #include "ui/SourceLegend.h"
 #include "ui/SpatialView.h"
@@ -30,8 +31,9 @@ private:
 
     juce::ComboBox modeBox;
     juce::ComboBox colourBox;
+    juce::ComboBox viewStyleBox;
     juce::TextEditor nameEditor;
-    juce::ToggleButton bandOnlyButton { "Range Filter" };
+    juce::ToggleButton bandOnlyButton { "Filter Audio" };
 
     juce::Slider lowSlider;
     juce::Slider highSlider;
@@ -39,12 +41,15 @@ private:
 
     juce::Label modeLabel;
     juce::Label colourLabel;
+    juce::Label viewStyleLabel;
     juce::Label nameLabel;
     juce::Label lowLabel;
     juce::Label highLabel;
     juce::Label particleLabel;
+    juce::Label spectrumLabel;
     juce::Label statusLabel;
 
+    sv::BandSpectrumView bandSpectrum;
     sv::SpatialView spatialView;
     sv::SourceLegend sourceLegend;
 

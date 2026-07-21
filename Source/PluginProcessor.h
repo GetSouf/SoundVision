@@ -50,14 +50,16 @@ public:
     float getFreqLowHz() const;
     float getFreqHighHz() const;
     float getParticleRate() const;
-    bool isBandOnly() const;
+    bool isAudioFilterEnabled() const;
     juce::Colour getSourceColour() const;
+    void setFreqRange (float lowHz, float highHz);
 
 private:
     juce::AudioProcessorValueTreeState apvts;
     juce::SharedResourcePointer<sv::SoundVisionHub> hub;
 
-    sv::BandFilter bandFilter;
+    sv::BandFilter visualFilter;
+    sv::BandFilter audioFilter;
     sv::StereoAnalyzer analyzer;
     juce::AudioBuffer<float> analysisBuffer;
 

@@ -9,11 +9,18 @@ namespace sv
 
 constexpr int kMaxSources = 32;
 constexpr int kMaxNameChars = 32;
-constexpr int kAngularBins = 72; // continuous L <-> R soundstage (-90 .. +90 deg)
+
+/** Polar sound-field bins: angle (L..front..R) x radius (quiet..loud). */
+constexpr int kPolarAngleBins = 48;
+constexpr int kPolarRadiusBins = 20;
+
+inline int polarIndex (int angleBin, int radiusBin) noexcept
+{
+    return radiusBin * kPolarAngleBins + angleBin;
+}
 
 /**
- * Sender frame: a continuous stereo-field energy map (what headphones hear),
- * not three discrete L/M/R blobs.
+ * Sender frame: Mid/Side polar density map (Insight-style) + dynamics scalars.
  */
 struct SourceSnapshot
 {
@@ -21,19 +28,22 @@ struct SourceSnapshot
     char name[kMaxNameChars] {};
     uint32_t colourARGB = 0xff4ecdc4;
 
-    /** Normalised energy across the stereo stage. Index 0 = hard left, last = hard right. */
-    std::array<float, kAngularBins> field {};
+    /** Polar energy map. angle 0 = hard L, centre = front, last = hard R. */
+    std::array<float, kPolarAngleBins * kPolarRadiusBins> polarField {};
 
-    float leftEnergy = 0.0f;   // integral of left third (legend)
-    float centreEnergy = 0.0f; // integral of centre third
-    float rightEnergy = 0.0f;  // integral of right third
+    /** Weighted stereo centroid [-1, 1]. Tracks bus pan. */
+    float panCentroid = 0.0f;
+
+    /** L/R correlation [-1, 1]. +1 mono, 0 wide, -1 out of phase. */
+    float correlation = 1.0f;
+
+    float leftEnergy = 0.0f;
+    float centreEnergy = 0.0f;
+    float rightEnergy = 0.0f;
     float energy = 0.0f;
     float bandEnergy = 0.0f;
     float spectralFocus = 0.0f;
-
-    /** 0 = focused/dry-ish, 1 = decorrelated/diffuse (reverb fills space). */
     float diffuseness = 0.0f;
-
     float crest = 0.5f;
     float punch = 0.0f;
     float density = 0.5f;
