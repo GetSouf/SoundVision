@@ -35,7 +35,8 @@ float StereoAnalyzer::softClip01 (float x) noexcept
 
 float StereoAnalyzer::smoothMeter (float current, float target) noexcept
 {
-    const float coeff = target > current ? 0.32f : 0.07f;
+    // Fast attack / medium release so the picture tracks what you hear.
+    const float coeff = target > current ? 0.55f : 0.22f;
     return smoothTowards (current, target, coeff);
 }
 
@@ -159,22 +160,20 @@ void StereoAnalyzer::buildPolarField (const juce::AudioBuffer<float>& buffer,
         if (msEnergy < 1.0e-14f)
             continue;
 
-        // Mid/Side angle: 0 = centre (mono), -pi/2 = left, +pi/2 = right.
-        // This tracks mixer pan on the bus accurately.
-        const float angle = std::atan2 (side, mid + 1.0e-12f);
+        // Headphones: place energy by L/R ear balance (what each ear hears).
+        // -1 = only left, 0 = equal, +1 = only right.
+        const float earBal = (r - l) / juce::jmax (1.0e-6f, std::abs (l) + std::abs (r));
+        const float angleNorm = (earBal + 1.0f) * 0.5f;
         const float mag = std::sqrt (msEnergy);
 
-        const float angleNorm = (angle + juce::MathConstants<float>::halfPi)
-                              / juce::MathConstants<float>::pi;
         const int angleBin = juce::jlimit (0, kPolarAngleBins - 1,
-                                           (int) std::floor (angleNorm * (float) (kPolarAngleBins - 1)));
+                                           (int) std::floor (angleNorm * (float) (kPolarAngleBins - 1) + 0.5f));
         const int radiusBin = juce::jlimit (0, kPolarRadiusBins - 1,
                                             (int) std::floor (softClip01 (mag * 2.2f) * (float) (kPolarRadiusBins - 1)));
 
         outField[(size_t) polarIndex (angleBin, radiusBin)] += msEnergy;
 
-        const float pan = (r - l) / juce::jmax (1.0e-6f, std::abs (l) + std::abs (r));
-        panWeighted += (double) pan * (double) msEnergy;
+        panWeighted += (double) earBal * (double) msEnergy;
         panWeight += (double) msEnergy;
     }
 
@@ -218,7 +217,7 @@ AnalysisResult StereoAnalyzer::analyse (const juce::AudioBuffer<float>& dryBuffe
     const float punchRaw = shortEnv / juce::jmax (1.0e-5f, longEnv);
     const float punchNorm = juce::jlimit (0.0f, 1.0f, (punchRaw - 0.85f) / 1.8f);
 
-    pushSamplesForFft (dryBuffer);
+    pushSamplesForFft (bandBuffer);
     const float spectralTarget = computeSpectralFocus (lowHz, highHz);
 
     AnalysisResult out;
@@ -234,26 +233,37 @@ AnalysisResult StereoAnalyzer::analyse (const juce::AudioBuffer<float>& dryBuffe
     out.punch = punchNorm;
     out.density = 1.0f - crestNorm;
 
-    // L/C/R legend from angle thirds of polar field.
-    const int third = kPolarAngleBins / 3;
-    float lSum = 0, cSum = 0, rSum = 0;
-    for (int r = 0; r < kPolarRadiusBins; ++r)
+    // Silence / empty band: clear the field so visuals match "nothing heard".
+    if (bandRms < 1.0e-5f || bandPeak < 1.0e-5f)
     {
-        for (int a = 0; a < kPolarAngleBins; ++a)
-        {
-            const float v = field[(size_t) polarIndex (a, r)];
-            if (a < third)
-                lSum += v;
-            else if (a < 2 * third)
-                cSum += v;
-            else
-                rSum += v;
-        }
+        out.polarField.fill (0.0f);
+        out.leftEnergy = out.centreEnergy = out.rightEnergy = 0.0f;
+        out.bandEnergy = 0.0f;
+        out.panCentroid = 0.0f;
     }
-    const float norm = juce::jmax (1.0e-6f, (float) (third * kPolarRadiusBins));
-    out.leftEnergy = softClip01 (lSum / norm);
-    out.centreEnergy = softClip01 (cSum / norm);
-    out.rightEnergy = softClip01 (rSum / norm);
+    else
+    {
+        // L/C/R legend from angle thirds of polar field.
+        const int third = kPolarAngleBins / 3;
+        float lSum = 0, cSum = 0, rSum = 0;
+        for (int r = 0; r < kPolarRadiusBins; ++r)
+        {
+            for (int a = 0; a < kPolarAngleBins; ++a)
+            {
+                const float v = field[(size_t) polarIndex (a, r)];
+                if (a < third)
+                    lSum += v;
+                else if (a < 2 * third)
+                    cSum += v;
+                else
+                    rSum += v;
+            }
+        }
+        const float norm = juce::jmax (1.0e-6f, (float) (third * kPolarRadiusBins));
+        out.leftEnergy = softClip01 (lSum / norm);
+        out.centreEnergy = softClip01 (cSum / norm);
+        out.rightEnergy = softClip01 (rSum / norm);
+    }
 
     for (size_t i = 0; i < out.polarField.size(); ++i)
         out.polarField[i] = smoothMeter (smoothed.polarField[i], out.polarField[i]);

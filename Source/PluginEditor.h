@@ -33,7 +33,6 @@ private:
     juce::ComboBox colourBox;
     juce::ComboBox viewStyleBox;
     juce::TextEditor nameEditor;
-    juce::ToggleButton bandOnlyButton { "Filter Audio" };
 
     juce::Slider lowSlider;
     juce::Slider highSlider;
@@ -55,14 +54,12 @@ private:
 
     using BoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
     std::unique_ptr<BoxAttachment> modeAttachment;
     std::unique_ptr<BoxAttachment> colourAttachment;
     std::unique_ptr<SliderAttachment> lowAttachment;
     std::unique_ptr<SliderAttachment> highAttachment;
     std::unique_ptr<SliderAttachment> particleAttachment;
-    std::unique_ptr<ButtonAttachment> bandOnlyAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SoundVisionAudioProcessorEditor)
 };

@@ -31,7 +31,9 @@ void BandSpectrumView::setSpectrum (const std::array<float, kSpectrumBins>& valu
 void BandSpectrumView::setCuts (float newLowHz, float newHighHz)
 {
     lowHz = juce::jlimit (0.0f, 20000.0f, newLowHz);
-    highHz = juce::jlimit (juce::jmax (lowHz + 10.0f, 10.0f), 20000.0f, newHighHz);
+    highHz = juce::jlimit (0.0f, 20000.0f, newHighHz);
+    if (highHz < lowHz)
+        std::swap (lowHz, highHz);
     repaint();
 }
 
@@ -76,9 +78,9 @@ void BandSpectrumView::applyDrag (float x, float width)
     float newHigh = highHz;
 
     if (drag == DragTarget::low)
-        newLow = juce::jlimit (0.0f, newHigh - 10.0f, hz <= kMinHz + 1.0f ? 0.0f : hz);
+        newLow = juce::jlimit (0.0f, newHigh, hz <= kMinHz + 1.0f ? 0.0f : hz);
     else if (drag == DragTarget::high)
-        newHigh = juce::jlimit (newLow + 10.0f, 20000.0f, hz);
+        newHigh = juce::jlimit (newLow, 20000.0f, hz);
 
     lowHz = newLow;
     highHz = newHigh;
@@ -123,10 +125,17 @@ void BandSpectrumView::paint (juce::Graphics& g)
     const float lowX = plot.getX() + hzToX (juce::jmax (kMinHz, lowHz <= 0.0f ? kMinHz : lowHz), w);
     const float highX = plot.getX() + hzToX (highHz, w);
 
-    // Dim outside the passband.
+    // Dim outside the passband. Collapsed band => fully dimmed (silence).
     g.setColour (juce::Colour (0xff0a0e14).withAlpha (0.55f));
-    g.fillRect (plot.getX(), plot.getY(), juce::jmax (0.0f, lowX - plot.getX()), h);
-    g.fillRect (highX, plot.getY(), juce::jmax (0.0f, plot.getRight() - highX), h);
+    if (highHz - lowHz < 1.0f)
+    {
+        g.fillRect (plot);
+    }
+    else
+    {
+        g.fillRect (plot.getX(), plot.getY(), juce::jmax (0.0f, lowX - plot.getX()), h);
+        g.fillRect (highX, plot.getY(), juce::jmax (0.0f, plot.getRight() - highX), h);
+    }
 
     // Spectrum bars.
     const float barW = w / (float) kSpectrumBins;

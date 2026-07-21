@@ -86,10 +86,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PluginParameters::createPara
         juce::NormalisableRange<float> (0.2f, 2.5f, 0.01f),
         1.1f));
 
+    // Kept for session compatibility; audio is always band-filtered now.
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ParamIDs::showOnlyBand, 1 },
         "Filter Audio",
-        false));
+        true));
 
     return { params.begin(), params.end() };
 }

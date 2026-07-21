@@ -208,25 +208,37 @@ void SoundVisionAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 
     float lowHz = getFreqLowHz();
     float highHz = getFreqHighHz();
-    if (highHz < lowHz + 10.0f)
-        highHz = lowHz + 10.0f;
+    if (highHz < lowHz)
+        std::swap (lowHz, highHz);
 
-    // Always band-limit what the spatial view analyses.
-    analysisBuffer.makeCopyOf (buffer, true);
-    visualFilter.setEnabled (true);
-    visualFilter.setRange (lowHz, highHz);
-    visualFilter.process (analysisBuffer);
+    // No selected band (handles collapsed) => silence + empty picture.
+    const bool bandEmpty = (highHz - lowHz) < 1.0f;
 
-    const auto result = analyzer.analyse (buffer, analysisBuffer, lowHz, highHz);
-
+    if (bandEmpty)
     {
+        buffer.clear();
+        analysisBuffer.setSize (buffer.getNumChannels(), buffer.getNumSamples(), false, false, true);
+        analysisBuffer.clear();
+
+        const auto result = analyzer.analyse (buffer, analysisBuffer, lowHz, highHz);
         const juce::SpinLock::ScopedLockType lock (analysisLock);
         lastAnalysis = result;
     }
-
-    // Optional: same cut applied to audible audio.
-    if (isAudioFilterEnabled())
+    else
     {
+        // Analyse filtered copy, then apply the same cut to audible output.
+        analysisBuffer.makeCopyOf (buffer, true);
+        visualFilter.setEnabled (true);
+        visualFilter.setRange (lowHz, highHz);
+        visualFilter.process (analysisBuffer);
+
+        const auto result = analyzer.analyse (buffer, analysisBuffer, lowHz, highHz);
+
+        {
+            const juce::SpinLock::ScopedLockType lock (analysisLock);
+            lastAnalysis = result;
+        }
+
         audioFilter.setEnabled (true);
         audioFilter.setRange (lowHz, highHz);
         audioFilter.process (buffer);

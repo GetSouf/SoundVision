@@ -85,7 +85,6 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     addAndMakeVisible (highSlider);
     addAndMakeVisible (particleSlider);
     addAndMakeVisible (bandSpectrum);
-    addAndMakeVisible (bandOnlyButton);
     addAndMakeVisible (spatialView);
     addAndMakeVisible (sourceLegend);
 
@@ -100,7 +99,6 @@ SoundVisionAudioProcessorEditor::SoundVisionAudioProcessorEditor (SoundVisionAud
     lowAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::freqLowHz, lowSlider);
     highAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::freqHighHz, highSlider);
     particleAttachment = std::make_unique<SliderAttachment> (apvts, sv::ParamIDs::particleRate, particleSlider);
-    bandOnlyAttachment = std::make_unique<ButtonAttachment> (apvts, sv::ParamIDs::showOnlyBand, bandOnlyButton);
 
     spatialView.setSnapshotProvider ([this]() -> std::vector<sv::SourceSnapshot>
     {
@@ -208,6 +206,5 @@ void SoundVisionAudioProcessorEditor::resized()
     particleSlider.setBounds (knobs.reduced (4, 12));
 
     placeLabeled (row (88), spectrumLabel, bandSpectrum);
-    bandOnlyButton.setBounds (row (28));
     statusLabel.setBounds (controls.removeFromBottom (48));
 }
